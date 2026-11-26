@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+require('./box-model.js');
+const {splitValue,resolveRadii,insetRadii,radiusCSS}=globalThis.designInspectBox;
+assert.deepEqual(splitValue('24px'),{number:'24',unit:'px'});
+assert.deepEqual(splitValue('-1.5rem'),{number:'-1.5',unit:'rem'});
+assert.deepEqual(splitValue('auto'),{number:'auto',unit:''});
+const all=value=>({topLeft:value,topRight:value,bottomRight:value,bottomLeft:value});
+const circles=resolveRadii(all('50%'),200,100);
+assert.deepEqual(circles.topLeft,{x:100,y:50});
+assert.deepEqual(resolveRadii(all('100px'),100,100).topLeft,{x:50,y:50},'Normalize overlapping CSS radii');
+const radii=resolveRadii({topLeft:'64px',topRight:'24px',bottomRight:'0px',bottomLeft:'12px 8px'},180,100);
+const inside=insetRadii(radii,{left:0,top:0,right:292,bottom:206},{left:35,top:29,right:257,bottom:177});
+assert.deepEqual(inside.topLeft,{x:29,y:35});
+assert.deepEqual(inside.topRight,{x:2,y:2});
+assert.deepEqual(inside.bottomRight,{x:2,y:2});
+assert.equal(radiusCSS(inside),'29px 2px 2px 2px / 35px 2px 2px 2px');
+console.log('Box-model radius checks passed');

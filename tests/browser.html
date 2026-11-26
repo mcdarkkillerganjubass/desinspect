@@ -1,0 +1,164 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Design Inspect browser checks</title>
+<style>
+  :root { font-size:16px; --space:24px; --ink:rgb(12, 34, 56); --font-ui:400 13px/20px sans-serif; --weight-strong:700; --clear:rgba(0,0,0,0); --very-long-color-variable-name-that-wraps:rgb(12,34,56); }
+  #trigger { box-sizing:border-box; width:180px; height:100px; padding:var(--space); color:var(--ink); border:2px solid var(--ink); border-radius:0; margin:2rem; }
+</style>
+<button id="trigger">Open dropdown</button>
+<div id="dropdown" hidden>Dropdown</div>
+<div id="type-shorthand" style="font:var(--font-ui);color:var(--ink);background-color:var(--clear)">Typography</div>
+<div id="type-override" style="font:var(--font-ui);font-weight:var(--weight-strong);background-color:#0000">Override</div>
+<div id="alignment" style="color:var(--very-long-color-variable-name-that-wraps)">Alignment</div>
+<pre id="result">Running</pre>
+<script>
+  const trigger = document.querySelector('#trigger'), dropdown = document.querySelector('#dropdown');
+  trigger.addEventListener('blur', () => dropdown.hidden = true);
+  document.addEventListener('pointerdown', event => {if (event.target !== trigger) dropdown.hidden = true;}, true);
+  let inspectorRoot;
+  const attach = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function(options) {const shadow = attach.call(this,options); if(this.localName === 'design-inspect-overlay') inspectorRoot = shadow; return shadow;};
+</script>
+<script src="../geometry.js"></script>
+<script src="../css-values.js"></script>
+<script src="../layout-icons.js"></script>
+<script src="../spacing.js"></script>
+<script src="../box-model.js"></script>
+<script src="../inspect.js"></script>
+<script>
+  Element.prototype.attachShadow = attach;
+  const assert = (ok, message) => {if(!ok) throw Error(message);};
+  const tick = () => new Promise(resolve => setTimeout(resolve, 100));
+  const click = el => el.dispatchEvent(new MouseEvent('click',{bubbles:true,composed:true,cancelable:true}));
+  let copiedText;
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copiedText=text;}}});
+  async function run() {
+    click(trigger); await tick();
+    const panel=inspectorRoot.querySelector('.panel');
+    assert(getComputedStyle(panel).fontSize==='13px' && getComputedStyle(panel).lineHeight==='15.6px','13px / 120 percent panel typography');
+    assert([...panel.querySelectorAll('*')].every(node=>parseFloat(getComputedStyle(node).fontSize)>=11),'11px minimum for all panel content');
+    assert([...inspectorRoot.querySelectorAll('[data-mode]')].every(button=>button.querySelector('svg') && !button.textContent.trim()),'Icon-only mode segments');
+    assert(inspectorRoot.querySelector('.unit-select').options.length===4,'Four unit choices');
+    const ordered=[...inspectorRoot.querySelector('.content').children].filter(node=>node.matches('.box-model,.size-table,.property-group')).map(node=>node.dataset.group || (node.className==='box-model'?'box':'sizes'));
+    assert(ordered.join(',')==='box,sizes,Appearance,Layout,Typography','Requested content order');
+    assert(![...inspectorRoot.querySelectorAll('h3')].some(node=>node.textContent==='Appearance'),'Appearance title removed');
+    const text = inspectorRoot.querySelector('.content').textContent;
+    assert(text.includes('space') && !text.includes('var(--') && text.includes('24px'), 'Clean variable names and computed descriptions');
+    const preview=inspectorRoot.querySelector('.color-preview');
+    assert(preview && preview.getBoundingClientRect().width===16 && preview.getBoundingClientRect().height===16 && getComputedStyle(preview).borderRadius==='4px', '16px square color preview');
+    const colorStack=preview.parentElement;
+    assert(colorStack.querySelector('.value-descriptions').hidden,'Computed variable descriptions hidden initially');
+    assert(!colorStack.querySelector('.value-toggle').innerHTML.includes('M3 3l18 18'),'Open eye offers to show values');
+    click(colorStack.querySelector('.value-toggle'));
+    assert(!colorStack.querySelector('.value-descriptions').hidden && colorStack.querySelector('.value-toggle').getAttribute('aria-expanded')==='true','Eye reveals computed descriptions');
+    assert(colorStack.querySelector('.value-toggle').innerHTML.includes('M3 3l18 18'),'Crossed eye offers to hide values');
+    assert(colorStack.querySelector('.token').getBoundingClientRect().left===colorStack.querySelector('.actual').getBoundingClientRect().left, 'Color description aligned with token text');
+    assert(colorStack.querySelector('.actual').getBoundingClientRect().top>colorStack.querySelector('.token').getBoundingClientRect().top, 'Computed value beneath token');
+    colorStack.querySelector('.token').scrollIntoView({block:'center'});
+    click(colorStack.querySelector('.token'));await tick();
+    assert(copiedText==='--ink','Copy complete custom property name');
+    assert(inspectorRoot.querySelector('.copy-feedback').textContent==='Copied' && !inspectorRoot.querySelector('.copy-feedback').hidden,'Copied feedback on successful write');
+    const copyHint=inspectorRoot.querySelector('.copy-feedback').getBoundingClientRect(), copiedToken=colorStack.querySelector('.token').getBoundingClientRect();
+    assert(copyHint.bottom<=copiedToken.top && copyHint.left>=0 && copyHint.right<=innerWidth,'Copied hint above copied element within viewport');
+    inspectorRoot.querySelector('.content').scrollTop=0;
+    const layoutNames=[...inspectorRoot.querySelectorAll('.layout-name')];
+    assert(layoutNames.length===6 && layoutNames.every(label=>label.title.length>10),'Layout hints remain; absent gap omitted');
+    assert(!inspectorRoot.querySelector('.layout-name').parentElement.querySelector('dd svg'),'Layout values have no decorative icons');
+    assert(text.includes('2rem'), 'Auto preserves authored units');
+    assert(inspectorRoot.querySelectorAll('.box-layer').length === 3, 'Margin/stroke/padding in one diagram');
+    assert(inspectorRoot.querySelector('.box-margin').getBoundingClientRect().height<200,'More compact box model');
+    assert(inspectorRoot.querySelectorAll('.box-value').length === 12, 'Four values per layer');
+    const side=inspectorRoot.querySelector('.box-padding .box-left'),number=side.querySelector('.box-number'),units=side.querySelector('.box-unit');
+    assert(number.textContent==='24' && units.textContent==='px','Side units split from numbers');
+    assert(units.getBoundingClientRect().top>=number.getBoundingClientRect().bottom,'Side units below numbers');
+    assert(Math.abs((number.getBoundingClientRect().left+number.getBoundingClientRect().width/2)-(units.getBoundingClientRect().left+units.getBoundingClientRect().width/2))<.1,'Side numbers and units centered');
+    assert(!inspectorRoot.querySelector('.radius-marker'),'No arcs for zero radius');
+    trigger.style.borderRadius='64px 24px 0 12px';click(trigger);await tick();
+    assert(inspectorRoot.querySelectorAll('.radius-marker').length===3,'Arcs only for rounded corners');
+    assert(inspectorRoot.querySelector('[data-corner=topLeft]').textContent==='64px','Actual corner radius label');
+    const outside=inspectorRoot.querySelector('.box-margin'),stroke=inspectorRoot.querySelector('.box-stroke');
+    assert(getComputedStyle(outside).borderTopLeftRadius==='64px','Outer margin matches the actual radius');
+    const expectedX=Math.max(2,64-(stroke.getBoundingClientRect().left-outside.getBoundingClientRect().left));
+    const expectedY=Math.max(2,64-(stroke.getBoundingClientRect().top-outside.getBoundingClientRect().top));
+    const innerRadius=getComputedStyle(stroke).borderTopLeftRadius.split(' ').map(parseFloat);
+    assert(Math.abs(innerRadius[0]-expectedX)<.1 && Math.abs((innerRadius[1] || innerRadius[0])-expectedY)<.1,'Inner radii subtract diagram insets');
+    assert(parseFloat(getComputedStyle(inspectorRoot.querySelector('.box-center')).borderBottomRightRadius)>=2,'Inner minimum radius 2px');
+    trigger.style.borderRadius='0';click(trigger);await tick();
+    assert(inspectorRoot.querySelector('.box-center').textContent.includes('128px × 48px'), 'Border-box content dimensions exclude padding and stroke');
+    assert(inspectorRoot.querySelector('.box-center small').title.includes('excluding padding'),'Content explains its box-model meaning');
+    trigger.style.transform='scale(2)';click(trigger);await tick();
+    const dimensions=inspectorRoot.querySelectorAll('.size-table tr');
+    assert(dimensions.length===2 && [...dimensions].every(row=>row.children.length===2),'Combined dimensions table has two rows and two columns');
+    assert(dimensions[0].querySelector('.screen-size').textContent==='360px' && dimensions[0].querySelector('.css-size-value').textContent==='180px','Screen and CSS widths remain distinct');
+    assert(dimensions[1].querySelector('.screen-size').textContent==='200px' && dimensions[1].querySelector('.css-size-value').textContent==='100px','Screen and CSS heights remain distinct');
+    assert(dimensions[0].querySelector('.css-size').getBoundingClientRect().top>=dimensions[0].querySelector('.screen-size').getBoundingClientRect().bottom,'CSS dimensions are secondary descriptions below actual values');
+    assert(![...inspectorRoot.querySelectorAll('h3')].some(h=>/size/i.test(h.textContent)),'No dimensions headings');
+    const badge=dimensions[0].querySelector('.css-size-badge');badge.scrollIntoView({block:'center'});badge.dispatchEvent(new Event('pointerenter'));
+    assert(!inspectorRoot.querySelector('.size-tooltip').hidden && inspectorRoot.querySelector('.size-tooltip').textContent==='CSS size','CSS badge help');
+    assert(inspectorRoot.querySelector('.size-tooltip').getBoundingClientRect().bottom<=badge.getBoundingClientRect().top,'CSS size hint above badge');
+    badge.dispatchEvent(new Event('pointerleave'));inspectorRoot.querySelector('.content').scrollTop=0;
+    trigger.style.transform='';click(trigger);await tick();
+    const setUnits=value=>{const select=inspectorRoot.querySelector('.unit-select');select.value=value;select.dispatchEvent(new Event('change',{bubbles:true,composed:true}));};
+    setUnits('rem');await tick();
+    assert(inspectorRoot.querySelector('.unit-select').value==='rem','Selected unit');
+    assert(inspectorRoot.querySelector('.content').textContent.includes('1.5rem'), 'rem conversion');
+    assert(inspectorRoot.querySelector('.color-preview').parentElement.querySelector('.value-descriptions').hidden,'New selection resets disclosure');
+    trigger.style.borderRadius='8px';click(trigger);await tick();
+    assert([...inspectorRoot.querySelectorAll('.radius-marker')].every(marker=>marker.textContent==='8px'),'Radius labels do not convert with rem display mode');
+    trigger.style.borderRadius='0';
+    click(document.querySelector('#type-shorthand')); await tick();
+    let fontRows=[...inspectorRoot.querySelectorAll('.row')].filter(row=>row.querySelector('dt').textContent==='font');
+    assert(fontRows.length===1 && fontRows[0].querySelectorAll('.actual').length===4, 'Shared font shorthand grouped with computed components');
+    assert(fontRows[0].querySelector('.token').textContent==='font-ui', 'Font token displayed once without wrapper');
+    const background=[...inspectorRoot.querySelectorAll('.row')].find(row=>row.querySelector('dt').textContent==='background-color');
+    assert(background.querySelector('.actual').textContent==='—', 'Transparent color retains token but has dash description');
+    setUnits('auto');
+    click(document.querySelector('#type-override')); await tick();
+    const weight=[...inspectorRoot.querySelectorAll('.row')].find(row=>row.querySelector('dt').firstChild.textContent==='font-weight');
+    assert(weight && weight.querySelector('.token').textContent==='weight-strong', 'Independent font override stays separate');
+    assert(weight.querySelector('.override-marker svg') && !weight.querySelector('.override-marker').title,'Replacement icon without override-source tooltip');
+    assert([...inspectorRoot.querySelectorAll('.row')].some(row=>row.querySelector('dt').textContent==='font'), 'Remaining shared font properties still grouped after override');
+    assert([...inspectorRoot.querySelectorAll('.row')].find(row=>row.querySelector('dt').textContent==='background-color').querySelector('dd').textContent==='—', 'Transparent hex source in Auto displays dash');
+    const literalColor=[...inspectorRoot.querySelectorAll('.row')].find(row=>row.querySelector('dt').textContent==='color');
+    assert(literalColor.querySelector('.color-preview') && !literalColor.querySelector('.token'),'Literal color values also have previews');
+    inspectorRoot.querySelector('.panel').style.width='340px';click(document.querySelector('#alignment'));await tick();
+    const alignedRow=[...inspectorRoot.querySelectorAll('.row')].find(row=>row.querySelector('dt').textContent==='color');
+    const alignedToken=alignedRow.querySelector('.token').getBoundingClientRect(), alignedPreview=alignedRow.querySelector('.color-preview').getBoundingClientRect();
+    assert(alignedToken.height>24,'Long variable wraps over multiple lines');
+    assert(alignedPreview.top===alignedToken.top,'Color preview stays at the first line of a wrapped value');
+    assert(alignedRow.querySelector('dt').getBoundingClientRect().top===alignedToken.top,'Parameter and multi-line value start at the same row position');
+    const plainValue=[...inspectorRoot.querySelectorAll('.row')].find(row=>row.querySelector('dt').textContent==='letter-spacing').querySelector('dd');
+    assert(plainValue.getBoundingClientRect().left===alignedToken.left,'Color-variable text aligns with plain values in the shared text column');
+    assert(alignedPreview.right<alignedToken.left && alignedRow.querySelector('.color-preview').parentElement===alignedRow,'Preview has its own column outside the value text');
+    assert(getComputedStyle(alignedRow.querySelector('dd')).textAlign==='start','Values align from start');
+    inspectorRoot.querySelector('.panel').style.width='';
+    click(trigger);await tick();
+    const use = inspectorRoot.querySelector('[data-mode=use]'); click(use); await tick();
+    trigger.focus(); dropdown.hidden = false;
+    const inspect = inspectorRoot.querySelector('[data-mode=inspect]'), r = inspect.getBoundingClientRect();
+    for (const type of ['pointerdown','mousedown','pointerup','mouseup','click']) {
+      inspect.dispatchEvent(new MouseEvent(type,{bubbles:true,composed:true,cancelable:true,clientX:r.left+r.width/2,clientY:r.top+r.height/2}));
+    }
+    await tick();
+    assert(!dropdown.hidden, 'Switch must not reach outside-click listener');
+    assert(document.activeElement === trigger, 'Switch must preserve page focus');
+    assert(inspect.getAttribute('aria-pressed') === 'true', 'Inspect enabled');
+    click(trigger); await tick();
+    assert(inspectorRoot.querySelector('.content').textContent.includes('space'), 'Selection after switching');
+    const originalCommand=document.execCommand;
+    const spacingCopy=[...inspectorRoot.querySelectorAll('.token')].find(button=>button.textContent==='space');
+    navigator.clipboard.writeText=async()=>{throw Error('Clipboard blocked');};
+    document.execCommand=()=>{copiedText=inspectorRoot.querySelector('textarea').value;return true;};
+    click(spacingCopy);await tick();
+    assert(copiedText==='--space' && inspectorRoot.querySelector('.copy-feedback').textContent==='Copied','Legacy copy fallback writes full name');
+    document.execCommand=()=>false;
+    click(spacingCopy);await tick();
+    assert(inspectorRoot.querySelector('.copy-feedback').textContent==='Could not copy','Clipboard failure never claims success');
+    document.execCommand=originalCommand;
+    click(inspectorRoot.querySelector('.close'));
+    assert(!document.querySelector('design-inspect-overlay'), 'Cleanup');
+    document.querySelector('#result').textContent = 'PASS: variables, Auto/rem, dropdown state, focus, mode switch, cleanup';
+    document.body.dataset.result = 'pass';
+  }
+  run().catch(error => {document.querySelector('#result').textContent = error.stack; document.body.dataset.result = 'fail';});
+</script>
