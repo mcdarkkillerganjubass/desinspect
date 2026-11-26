@@ -103,6 +103,33 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
   assert.equal(await control(a=>a.class==='panel',"return getComputedStyle(this).fontFamily.includes('Design Inspect Inter')"),true);
   assert.equal(await control(a=>a.class==='panel',"return [...this.querySelectorAll('*')].every(node=>parseFloat(getComputedStyle(node).fontSize)>=11)"),true,'No content below 11px');
   assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),340,'Minimum initial panel width');
+  if(process.env.HOVER_TEST) {
+    await page.eval(`{
+      const style=document.createElement('style');style.textContent='#hover-target {position:fixed;left:20px;top:20px;width:120px;height:80px;background:rgb(0, 0, 0)} #hover-target:hover {background:rgb(255, 0, 0)}';document.head.append(style);
+      const target=document.createElement('div');target.id='hover-target';document.body.append(target);
+      for(const type of ['pointerout','pointerleave','mouseout','mouseleave'])target.addEventListener(type,()=>target.dataset[type]='left');
+    }`);
+    await mode('use');
+    await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:50,y:50});
+    assert.equal(await page.eval("getComputedStyle(document.querySelector('#hover-target')).backgroundColor"),'rgb(255, 0, 0)','CSS hover activates in Use');
+    await mode('inspect');
+    await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:50,y:50});
+    await page.eval("document.querySelector('#hover-target').dataset.pointerout='';document.querySelector('#hover-target').dataset.pointerleave='';document.querySelector('#hover-target').dataset.mouseout='';document.querySelector('#hover-target').dataset.mouseleave=''");
+    await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:200,y:120});
+    assert.equal(await page.eval("getComputedStyle(document.querySelector('#hover-target')).backgroundColor"),'rgb(0, 0, 0)','Normal Inspect releases CSS hover');
+    for(const type of ['pointerout','pointerleave','mouseout','mouseleave'])assert.equal(await page.eval(`document.querySelector('#hover-target').dataset.${type}`),'left',`Normal Inspect delivers ${type}`);
+    // Exercise the pinned event path without attaching a second debugger to headless Chrome.
+    await worker.eval(`send(${tabId},0,{type:'toggle-pinned-inspect',mode:'inspect',pinned:true})`);
+    await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:50,y:50});
+    await page.eval("document.querySelector('#hover-target').dataset.mouseleave=''");
+    await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:200,y:120});
+    assert.equal(await page.eval("document.querySelector('#hover-target').dataset.mouseleave"),'','Pinned Inspect suppresses hover leave');
+    await mode('use');
+    await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:50,y:50});
+    await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:200,y:120});
+    assert.equal(await page.eval("document.querySelector('#hover-target').dataset.mouseleave"),'left','Use restores hover leave events');
+    console.log('PASS: ordinary Inspect releases CSS and event hover; pinned event path suppresses leave; Use restores leave');return;
+  }
   if(process.env.EYEDROPPER_TEST) {
     await page.eval(`const swatch=document.createElement('div');swatch.id='pipette-target';swatch.style.cssText='position:fixed;left:20px;top:20px;width:100px;height:100px;--sample:rgb(12, 34, 56);background:var(--sample);z-index:100';document.body.append(swatch);`);
     await control(a=>'data-eyedropper' in a,'this.click()');

@@ -701,7 +701,7 @@
         return;
       }
       if (mode !== "inspect") return;
-      if(pinnedHover && ['pointerout','pointerleave','mouseout','mouseleave'].includes(type)){block(event);return;}
+      if(['pointerout','pointerleave','mouseout','mouseleave'].includes(type)){if(pinnedHover)block(event);return;}
       if (!eyedropper && type === "click" && !event.altKey) { const el = target(event); if (el) {selected = [el]; claim();} }
       block(event);
     }, {capture:true, passive:false});
