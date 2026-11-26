@@ -52,7 +52,7 @@ When several elements are selected, the panel shows their count and asks you to 
 
 ## Properties and box model
 
-The wider 420px panel can be dragged and resized horizontally from either edge. Its header stays fixed while properties scroll. The interface uses bundled Inter at 13px/120% line height, with an 11px minimum and native monospace for numbers and code. The font is packaged locally under the SIL Open Font License; see `fonts/README.md`.
+The panel opens at its minimum width of 340px and can be dragged and resized from all four edges. Its header stays fixed while properties scroll. The interface uses bundled Inter at 13px/120% line height, with an 11px minimum and native monospace for numbers and code. The font is packaged locally under the SIL Open Font License; see `fonts/README.md`.
 
 The selected element name occupies one ellipsized line. Its info button reveals DOM attributes; the hierarchy button lists its parent, current element and all immediate children, which can be selected directly, including inside connected frames. Geometry and displayed values update while the inspector is active. Mode and unit selectors are adjacent segmented controls; modes use icons.
 

@@ -20,7 +20,7 @@
       :host([data-theme=dark]) { color-scheme:dark; --di-bg:#242424; --di-panel:var(--di-bg); --di-fg:#ededeb; --di-muted:#a2a2a0; --di-line:#4a4a48; --di-field:var(--di-line); --di-margin:#edbd80; --di-margin-bg:#372d24; --di-margin-border:#795c39; --di-padding:#a2d5b4; --di-padding-bg:#243831; --di-padding-border:#47765d; --di-gap:#b9aaff; --di-stroke:#e8d79a; --di-stroke-bg:#34312a; --di-stroke-border:#82754e; --di-content:#afcafa; --di-content-bg:#253348; --di-content-border:#48658c; }
       * { box-sizing:border-box; }
       [hidden] { display:none!important; }
-      .panel { position:fixed; top:16px; right:16px; width:420px; min-width:min(340px,calc(100vw - 32px)); max-width:calc(100vw - 32px); max-height:calc(100vh - 32px); display:flex; flex-direction:column; overflow:hidden; pointer-events:auto; background:var(--di-bg); color:var(--di-fg); border:1px solid var(--di-line); border-radius:12px; box-shadow:0 12px 40px #0005; font:13px/1.2 var(--di-ui); }
+      .panel { position:fixed; top:16px; right:16px; width:340px; min-width:min(340px,calc(100vw - 32px)); max-width:calc(100vw - 32px); min-height:min(180px,calc(100vh - 32px)); max-height:calc(100vh - 32px); display:flex; flex-direction:column; overflow:hidden; pointer-events:auto; background:var(--di-bg); color:var(--di-fg); border:1px solid var(--di-line); border-radius:12px; box-shadow:0 12px 40px #0005; font:13px/1.2 var(--di-ui); }
       header { position:relative; flex:none; display:flex; align-items:center; gap:6px; padding:12px 14px 8px; cursor:grab; touch-action:none; }
       header strong { flex:1; font-size:13px; font-weight:600; }
       button { color:inherit; background:var(--di-field); border:0; border-radius:5px; padding:6px 8px; font:inherit; line-height:1.2; cursor:pointer; }
@@ -133,6 +133,7 @@
       footer { flex:none; border-top:1px solid var(--di-line); padding:10px 14px; color:var(--di-muted); font-size:11px; }
       kbd { color:var(--di-fg); font:11px/1.2 var(--di-mono); }
       .resize-handle { position:fixed; width:8px; pointer-events:auto; cursor:ew-resize; touch-action:none; }
+      .resize-handle[data-edge=top], .resize-handle[data-edge=bottom] { height:8px; cursor:ns-resize; }
       .resize-handle:focus-visible { outline:1px solid var(--di-muted); background:var(--di-field); }
       svg.measurements { position:fixed; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
       svg.ui-icon { display:block; width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
@@ -150,7 +151,7 @@
       <div class="selection-header"></div>
       <div class="content" aria-live="polite"></div>
       <footer><kbd>Alt+Shift+P</kbd> — pin hover · <kbd>Enter</kbd> — children · <kbd>Shift Enter</kbd> — parent<br><kbd>Alt + hover</kbd> — measure · <kbd>I</kbd> — color · <kbd>Esc</kbd> — clear</footer>
-    </section><div class="resize-handle" data-edge="left" role="separator" aria-orientation="vertical" aria-label="Resize inspector from left" tabindex="0"></div><div class="resize-handle" data-edge="right" role="separator" aria-orientation="vertical" aria-label="Resize inspector from right" tabindex="0"></div><div class="copy-feedback" role="status" aria-live="polite" hidden></div><div class="size-tooltip" id="css-size-help" role="tooltip" hidden>CSS size</div>`;
+    </section><div class="resize-handle" data-edge="top" role="separator" aria-orientation="horizontal" aria-label="Resize inspector from top" tabindex="0"></div><div class="resize-handle" data-edge="bottom" role="separator" aria-orientation="horizontal" aria-label="Resize inspector from bottom" tabindex="0"></div><div class="resize-handle" data-edge="left" role="separator" aria-orientation="vertical" aria-label="Resize inspector from left" tabindex="0"></div><div class="resize-handle" data-edge="right" role="separator" aria-orientation="vertical" aria-label="Resize inspector from right" tabindex="0"></div><div class="copy-feedback" role="status" aria-live="polite" hidden></div><div class="size-tooltip" id="css-size-help" role="tooltip" hidden>CSS size</div>`;
   document.documentElement.append(host);
   const panel = root.querySelector(".panel");
   if (!isTop) {panel.remove();for(const handle of root.querySelectorAll('.resize-handle'))handle.remove();}
@@ -741,20 +742,26 @@
     if(!isTop)return;
     const bounds=panel.getBoundingClientRect();
     for(const handle of resizeHandles) {
-      handle.style.left=`${(handle.dataset.edge==='left'?bounds.left:bounds.right)-4}px`;handle.style.top=`${bounds.top}px`;handle.style.height=`${bounds.height}px`;
-      handle.setAttribute('aria-valuenow',String(Math.round(bounds.width)));handle.setAttribute('aria-valuemin',String(Math.min(340,innerWidth-32)));handle.setAttribute('aria-valuemax',String(innerWidth-32));
+      const vertical=['top','bottom'].includes(handle.dataset.edge);
+      handle.style.left=`${vertical?bounds.left:(handle.dataset.edge==='left'?bounds.left:bounds.right)-4}px`;
+      handle.style.top=`${vertical?(handle.dataset.edge==='top'?bounds.top:bounds.bottom)-4:bounds.top}px`;
+      handle.style.width=`${vertical?bounds.width:8}px`;handle.style.height=`${vertical?8:bounds.height}px`;
+      handle.setAttribute('aria-valuenow',String(Math.round(vertical?bounds.height:bounds.width)));handle.setAttribute('aria-valuemin',String(Math.min(vertical?180:340,(vertical?innerHeight:innerWidth)-32)));handle.setAttribute('aria-valuemax',String((vertical?innerHeight:innerWidth)-32));
     }
   }
-  function resizePanel(edge,width,bounds) {
-    const maximum=Math.min(innerWidth-32,edge==='left'?bounds.right-8:innerWidth-bounds.left-8),minimum=Math.min(340,maximum);
-    width=Math.max(minimum,Math.min(maximum,width));panel.style.width=`${width}px`;
-    place(edge==='left'?bounds.right-width:bounds.left,bounds.top);updateDiagramRadii();syncHandles();
+  function resizePanel(edge,size,bounds) {
+    const vertical=['top','bottom'].includes(edge),start=edge==='left'||edge==='top';
+    const viewport=vertical?innerHeight:innerWidth,near=vertical?bounds.top:bounds.left,far=vertical?bounds.bottom:bounds.right;
+    const maximum=Math.min(viewport-32,start?far-8:viewport-near-8),minimum=Math.min(vertical?180:340,maximum);
+    size=Math.max(minimum,Math.min(maximum,size));panel.style[vertical?'height':'width']=`${size}px`;
+    place(vertical?bounds.left:(start?far-size:near),vertical?(start?far-size:near):bounds.top);updateDiagramRadii();syncHandles();
   }
   for(const handle of resizeHandles) {
-    listen(handle,'pointerdown',event=>{resize={edge:handle.dataset.edge,x:event.clientX,bounds:panel.getBoundingClientRect()};handle.setPointerCapture(event.pointerId);event.preventDefault();});
-    listen(handle,'pointermove',event=>{if(resize)resizePanel(resize.edge,resize.bounds.width+(event.clientX-resize.x)*(resize.edge==='left'?-1:1),resize.bounds);});
+    const vertical=['top','bottom'].includes(handle.dataset.edge),direction=handle.dataset.edge==='left'||handle.dataset.edge==='top'?-1:1;
+    listen(handle,'pointerdown',event=>{resize={edge:handle.dataset.edge,position:vertical?event.clientY:event.clientX,bounds:panel.getBoundingClientRect()};handle.setPointerCapture(event.pointerId);event.preventDefault();});
+    listen(handle,'pointermove',event=>{if(resize)resizePanel(resize.edge,(vertical?resize.bounds.height:resize.bounds.width)+((vertical?event.clientY:event.clientX)-resize.position)*direction,resize.bounds);});
     for(const type of ['pointerup','pointercancel','lostpointercapture'])listen(handle,type,()=>{resize=null;});
-    listen(handle,'keydown',event=>{if(!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const r=panel.getBoundingClientRect();resizePanel(handle.dataset.edge,r.width+(event.key==='ArrowRight'?1:-1)*(handle.dataset.edge==='left'?-16:16),r);});
+    listen(handle,'keydown',event=>{const keys=vertical?['ArrowUp','ArrowDown']:['ArrowLeft','ArrowRight'];if(!keys.includes(event.key))return;event.preventDefault();const r=panel.getBoundingClientRect();resizePanel(handle.dataset.edge,(vertical?r.height:r.width)+(event.key===keys[1]?16:-16)*direction,r);});
   }
   const panelObserver=isTop?new ResizeObserver(()=>{syncHandles();updateDiagramRadii();}):null;
   panelObserver?.observe(panel);

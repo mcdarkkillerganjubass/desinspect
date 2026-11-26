@@ -19,7 +19,7 @@ The extension SHALL use Manifest V3 and run unpacked from the repository without
 - **THEN** the action displays a `!` badge and a title explaining that a regular website is required
 
 ### Requirement: Floating inspection panel
-The inspector SHALL display a dark floating panel over the main page without reducing the website's viewport width. It SHALL start at 420px wide and support header dragging. Property content SHALL scroll independently while the header, controls, selected-element row and shortcut footer remain visible. Position and dimensions SHALL fit the viewport where possible.
+The inspector SHALL display a dark floating panel over the main page without reducing the website's viewport width. It SHALL start at its minimum width of 340px and support header dragging. Property content SHALL scroll independently while the header, controls, selected-element row and shortcut footer remain visible. Position and dimensions SHALL fit the viewport where possible.
 
 #### Scenario: Move the panel
 - **WHEN** the user drags the panel header
@@ -31,7 +31,10 @@ Both panel edges SHALL provide pointer and keyboard-accessible horizontal resize
 
 #### Scenario: Resize from the left
 - **WHEN** the user drags the left edge 40px left from the initial width
-- **THEN** the panel becomes 460px wide without resizing the website
+- **THEN** the panel becomes 380px wide without resizing the website
+
+### Requirement: Vertical resizing
+The top and bottom panel edges SHALL provide pointer and keyboard-accessible vertical resize handles. The minimum height SHALL be 180px, reduced for shorter viewports. Resize SHALL preserve the opposite edge where possible and respect viewport bounds. Arrow Up and Arrow Down SHALL adjust height in 16px steps while property content scrolls independently.
 
 ### Requirement: Bundled typography
 The panel SHALL use bundled Inter at 13px with 120 percent line height by default. Numeric values, CSS/code text and measurement labels SHALL use native monospace fonts. No inspector content SHALL use a font smaller than 11px. The font SHALL load locally without a runtime CDN request, including on host pages that block remote fonts; the packaged SIL OFL license SHALL be retained.

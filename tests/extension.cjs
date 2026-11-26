@@ -102,7 +102,7 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
   assert.equal(await control(a=>a.class==='panel','return getComputedStyle(this).lineHeight'),'15.6px','120 percent line height');
   assert.equal(await control(a=>a.class==='panel',"return getComputedStyle(this).fontFamily.includes('Design Inspect Inter')"),true);
   assert.equal(await control(a=>a.class==='panel',"return [...this.querySelectorAll('*')].every(node=>parseFloat(getComputedStyle(node).fontSize)>=11)"),true,'No content below 11px');
-  assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),420,'Wider initial panel');
+  assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),340,'Minimum initial panel width');
   if(process.env.EYEDROPPER_TEST) {
     await page.eval(`const swatch=document.createElement('div');swatch.id='pipette-target';swatch.style.cssText='position:fixed;left:20px;top:20px;width:100px;height:100px;--sample:rgb(12, 34, 56);background:var(--sample);z-index:100';document.body.append(swatch);`);
     await control(a=>'data-eyedropper' in a,'this.click()');
@@ -250,7 +250,13 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
   await page.call('Input.dispatchMouseEvent',{type:'mousePressed',x:resizeBefore.left,y:resizeBefore.top+60,button:'left',clickCount:1});
   await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:resizeBefore.left-40,y:resizeBefore.top+60,button:'left',buttons:1});
   await page.call('Input.dispatchMouseEvent',{type:'mouseReleased',x:resizeBefore.left-40,y:resizeBefore.top+60,button:'left',clickCount:1});
-  assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),460,'Horizontal resize handle expands panel');
+  assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),380,'Horizontal resize handle expands panel');
+  const heightBefore=await control(a=>a.class==='panel','return this.getBoundingClientRect().height');
+  await control(a=>a['data-edge']==='bottom',"this.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}))");
+  assert.equal(await control(a=>a.class==='panel','return this.getBoundingClientRect().height'),heightBefore-16,'Bottom handle reduces height with keyboard');
+  await control(a=>a['data-edge']==='top',"this.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}))");
+  assert.equal(await control(a=>a.class==='panel','return this.getBoundingClientRect().height'),heightBefore-32,'Top handle reduces height with keyboard');
+  await control(a=>a.class==='panel',"this.style.height='auto'");
   await control(a=>a.class==='panel',"this.style.width='420px';this.style.left='auto';this.style.right='16px'");
   assert.equal(await control(a=>a.class==='size-table',"return this.querySelectorAll('tr').length"),2,'Frame dimensions in combined shared table');
   assert.equal(await control(a=>a.class==='box-model',"return this.querySelectorAll('.box-value').length"),12,'All box model sides in shared panel');

@@ -16,8 +16,10 @@ button.addEventListener("click", () => {
   // Keep the permissions request inside the direct user gesture.
   const request = origins.length ? chrome.permissions.request({origins}) : Promise.resolve(true);
   button.disabled = true;
+  status.textContent = origins.length ? "Запрос должен появиться в интерфейсе браузера…" : "Подключаем фреймы…";
   request.then(async granted => {
     if (!granted) {status.textContent = "Доступ не выдан. Основная страница продолжит работать."; button.disabled = false; return;}
+    status.textContent = "Доступ выдан. Подключаем фреймы…";
     const result = await send("refresh-frames");
     status.textContent = result.error || (result.blockedCount ? `Доступ обновлён. Недоступных фреймов: ${result.blockedCount}. Они могут быть ограничены браузером; доступные фреймы уже подключены.` : "Готово. Вернитесь на страницу и выберите элемент внутри iframe.");
     if (!result.error) button.hidden = true;
