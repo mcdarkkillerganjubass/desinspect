@@ -5,7 +5,6 @@
   "description": "Inspect live page geometry and computed CSS with Figma-like shortcuts.",
   "permissions": ["activeTab", "scripting", "webNavigation", "storage", "debugger"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
-  "web_accessible_resources": [{ "resources": ["assets/desinspect-logo.png"], "matches": ["http://*/*", "https://*/*"] }],
   "action": { "default_title": "Toggle Design Inspect" },
   "background": { "service_worker": "background.js" }
 }
