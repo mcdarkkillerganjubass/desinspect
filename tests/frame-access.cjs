@@ -19,8 +19,10 @@ async function check(granted) {
   await vm.runInContext("handle({type:'open-access'},{tab:{id:12},frameId:1})",context);
   assert.equal(requests.length,1,'Subframes cannot initiate permission requests');
   vm.runInContext('frameAccessOrigins.delete(12)',context);
-  const retry=await vm.runInContext("handle({type:'open-access'},{tab:{id:12},frameId:0})",context);
-  assert.equal(retry.granted,true,'Without cached hosts, rediscover frames without a blanket request');
-  assert.equal(requests.length,1);
+  const retry=await vm.runInContext("handle({type:'open-access',origins:['https://frame.example/*']},{tab:{id:12},frameId:0})",context);
+  assert.equal(retry.granted,granted,'Panel retains discovered hosts across a worker restart');
+  assert.equal(requests.length,2,'First click after restart still requests permission');
+  await vm.runInContext("handle({type:'open-access',origins:['https://*/*','<all_urls>','garbage']},{tab:{id:12},frameId:0})",context);
+  assert.equal(requests.length,2,'Reject broad or invalid fallback origins');
 }
 (async()=>{await check(false);await check(true);console.log('PASS: direct iframe access approval, denial, sender validation, and rediscovery');})().catch(error=>{console.error(error);process.exitCode=1;});

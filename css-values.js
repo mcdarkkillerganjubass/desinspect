@@ -252,10 +252,5 @@
     if(part==='width')return width||candidates.find(t=>{const v=resolve(t);return v&&supports(property,v);})||null;
     return candidates.find(t=>{const v=resolve(t);return supports('color',t)&&(!v||supports('color',v));})||null;
   }
-  function variableCopyText(expression) {
-    const primary=expression.trim().match(/^var\(\s*(--[\w-]+)/);
-    if(primary)return primary[1];
-    return expression;
-  }
-  globalThis.designInspectCSS = {format, sourceReader, specificity, tokenLabel, displayValue, groupTypography, variableCopyText, borderComponent};
+  globalThis.designInspectCSS = {format, sourceReader, specificity, tokenLabel, displayValue, groupTypography, borderComponent};
 })();

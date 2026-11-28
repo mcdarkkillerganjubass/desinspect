@@ -34,9 +34,6 @@
 
       .review-card,.review-comment { background:var(--di-color-surface-section); border-radius:var(--di-radius-section); padding:var(--di-space-section); margin-bottom:var(--di-space-related); }
       .review-card p { margin:0 0 var(--di-space-related); font:var(--di-font-caption); }
-      .review-actions { display:flex; flex-wrap:wrap; gap:var(--di-space-related); }
-      .review-actions button,.review-edit-button,.review-reset { font:var(--di-font-caption); padding:var(--di-space-related); }
-      .review-edit-button,.review-reset { margin-left:var(--di-space-related); color:var(--di-color-action); background:transparent; }
       .review-editor { flex:none; padding:var(--di-space-related) 0 var(--di-space-section); margin:0; }
       .review-editor input,.review-editor select,.review-comment textarea { width:100%; min-width:0; color:var(--di-color-text-primary); background:var(--di-color-surface-panel); border:1px solid var(--di-color-border-default); border-radius:var(--di-radius-button-default); padding:var(--di-space-related); font:var(--di-font-body); }
       .content>.review-comment { flex:1 0 auto; padding:var(--di-space-related) 0 var(--di-space-section); margin:0; }
@@ -53,7 +50,6 @@
       .review-status { color:var(--di-color-text-secondary); font:var(--di-font-caption); overflow-wrap:anywhere; }
       .review-editor label { display:block; margin-bottom:var(--di-space-related); }
       .review-editor [role=alert] { color:var(--di-color-text-primary); }
-      .box-value .review-edit-button { padding:0; margin:0; font:var(--di-font-caption); }
       .review-box-trigger { display:inline-flex; align-items:center; gap:0; margin:0; padding:0; background:transparent; color:inherit; font:inherit; border-radius:0; cursor:text; }
       .box-left .review-box-trigger,.box-right .review-box-trigger { flex-direction:column; }
       .review-box-trigger:hover { color:var(--di-color-action); }
@@ -71,7 +67,6 @@
       .review-value:hover { color:var(--di-color-action); }
       .review-edited { display:flex; align-items:center; gap:var(--di-space-related); color:var(--di-color-action); font:var(--di-font-caption); }
       .review-edited-label { color:inherit; padding:0; background:none; font:inherit; }
-      .review-edited .review-reset { padding:0; margin:0; display:inline-flex; background:none; color:inherit; }
       .review-editor-header { display:flex; align-items:center; gap:var(--di-space-related); padding:var(--di-space-inline-tight) var(--di-space-section) var(--di-space-related); }
       .review-editor-header label { flex:1; min-width:0; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:var(--di-font-body); }
       .review-editor-header>.review-note-asset { color:var(--di-color-text-secondary); }

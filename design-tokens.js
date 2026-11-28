@@ -92,7 +92,6 @@
   "size-dom-tag-limit": "45%",
   "size-tree-relation-width": "52px",
   "size-value-min-width": "68px",
-  "size-theme-select-offset": "46px",
   "size-table-parameter-preferred": "112px",
   "size-box-label-height": "22px",
   "size-box-content-compact-height": "34px",

@@ -32,7 +32,6 @@
       .icon-button { display:inline-flex; align-items:center; justify-content:center; flex:none; width:var(--di-size-control); height:var(--di-size-control); padding:var(--di-space-related); background:transparent; color:var(--di-color-text-secondary); }
       .element-info.icon-button, .element-tree-toggle.icon-button { width:var(--di-size-control); height:var(--di-size-control); padding:var(--di-space-related); }
       .icon-button:hover { color:var(--di-color-text-primary); background:var(--di-color-surface-control-hover); }
-      .theme-select { position:absolute; top:50%; right:var(--di-size-theme-select-offset); transform:translateY(-50%); width:var(--di-size-control); height:var(--di-size-control); opacity:0; cursor:pointer; }
       .eyedropper-popover { position:fixed; z-index:var(--di-layer-probe); max-width:min(var(--di-size-tooltip-max-width),calc(100vw - var(--di-size-icon))); display:grid; grid-template-columns:var(--di-size-icon) minmax(0,1fr); gap:var(--di-space-related) var(--di-space-group); padding:var(--di-space-tooltip-inset); border:var(--di-border-hairline-width) solid var(--di-color-border-default); border-radius:var(--di-radius-popover); background:var(--di-color-surface-panel); color:var(--di-color-text-primary); box-shadow:var(--di-shadow-probe); font:var(--di-font-code-compact); pointer-events:none; overflow-wrap:anywhere; }
       .eyedropper-swatch { width:var(--di-size-icon); height:var(--di-size-icon); border-radius:var(--di-radius-section); box-shadow:inset 0 0 0 var(--di-space-pixel-alignment) var(--di-color-border-default); }
       .eyedropper-value { grid-column:2; color:var(--di-color-text-secondary); font-size:var(--di-font-size-caption); }
@@ -41,9 +40,6 @@
       .segmented button[aria-pressed=true] { color:var(--di-color-text-on-accent); background:var(--di-color-action); }
       .segmented button:hover { color:var(--di-color-text-primary); }
       .modes button { display:flex; align-items:center; justify-content:center; width:var(--di-size-control); padding:var(--di-space-related); }
-      .unit-select-wrap { position:relative; display:inline-flex; flex:none; height:var(--di-size-control); }
-      .unit-select-wrap::after { content:""; position:absolute; top:var(--di-space-group); right:var(--di-space-group); width:var(--di-space-control-horizontal); height:var(--di-space-control-horizontal); border-right:var(--di-border-icon-width) solid currentColor; border-bottom:var(--di-border-icon-width) solid currentColor; transform:rotate(45deg); pointer-events:none; }
-      .unit-select { appearance:none; width:var(--di-size-value-min-width); height:var(--di-size-control); padding:0 var(--di-size-line-heading) 0 var(--di-space-field-inset); border:var(--di-border-hairline-width) solid var(--di-color-border-default); border-radius:var(--di-radius-field); background:transparent; color:var(--di-color-text-primary); font:var(--di-font-code-label); cursor:pointer; }
       .content { flex:1; min-height:0; overflow:auto; padding:0; }
       .selection-header { flex:none; padding:0 var(--di-space-selection-inset); max-height:40vh; overflow:auto; border-bottom:var(--di-border-hairline-width) solid var(--di-color-border-default); }
       .identity-row { display:flex; align-items:flex-start; gap:var(--di-space-related); min-width:0; margin-bottom:var(--di-space-group); }
@@ -298,7 +294,6 @@
     <section class="panel" aria-label="Design Inspect">
       <header><div class="brand"><span class="brand-label" aria-label="/des"></span><button class="inspect-toggle" data-mode="use" aria-label="Stop inspecting" aria-pressed="true"><span class="inspect-label" aria-hidden="true"></span><span class="inspect-state"></span></button></div><div class="tool-modes"><button class="eyedropper-button icon-button" data-eyedropper aria-label="Eyedropper" title="Eyedropper — I" aria-pressed="false"></button><button class="settings-button" aria-label="Units and theme" aria-expanded="false" aria-controls="inspector-settings"><span class="units-icon"></span><span class="unit-label">Auto</span><span class="settings-divider" aria-hidden="true"></span><span class="theme-icon"></span><span class="settings-chevron" aria-hidden="true"></span></button><button class="close icon-button" aria-label="Close inspector"></button></div></header>
       <div class="settings-menu dropdown-surface" id="inspector-settings" role="dialog" aria-label="Units and theme" hidden><div class="settings-section" role="group" aria-label="Units"><div class="settings-label">Units</div><div class="settings-options"><button data-unit="auto" aria-pressed="true">Auto</button><button data-unit="px" aria-pressed="false">px</button><button data-unit="rem" aria-pressed="false">rem</button><button data-unit="em" aria-pressed="false">em</button></div></div><div class="settings-section" role="group" aria-label="Theme"><div class="settings-label">Theme</div><div class="settings-options"><button data-theme-choice="system" aria-pressed="true">System</button><button data-theme-choice="light" aria-pressed="false">Light</button><button data-theme-choice="dark" aria-pressed="false">Dark</button></div></div></div>
-      <select class="unit-select" hidden aria-label="Measurement units"><option value="auto">Auto</option><option value="px">px</option><option value="rem">rem</option><option value="em">em</option></select><select class="theme-select" hidden aria-label="Theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
       <button class="frame-access" hidden>Iframe appeared. Allow inspect</button>
       <div class="selection-header"></div>
       <button class="all-properties" aria-pressed="false" hidden>Show all properties</button>
@@ -386,13 +381,21 @@
     colorPreview,icon:figmaIcon,assets:()=>bridge('review-assets'),request:(operation,payload)=>bridge('review-operation',{operation,payload}),compare:compareReview,refresh:()=>{lastDetails='';details();},
     edit:command=>bridge('review-target',{targetFrameId:activeFrameId,command})
   });
-  const {format, sourceReader, tokenLabel, displayValue, groupTypography, variableCopyText} = globalThis.designInspectCSS;
-  const {hints:layoutHints,eye,override:overrideIcon,controls,arrangeLayout} = globalThis.designInspectIcons;
+  const {format, sourceReader, tokenLabel, displayValue, groupTypography} = globalThis.designInspectCSS;
+  const {hints:layoutHints,override:overrideIcon,arrangeLayout} = globalThis.designInspectIcons;
   const {splitValue,resolveRadii,insetRadii,radiusCSS,capRadii,sideExpression}=globalThis.designInspectBox;
-  const themeSelect=root.querySelector('.theme-select'),themeButton=root.querySelector('.theme-icon'),unitSelect=root.querySelector('.unit-select');
-  const themes={system:['System','M3 4h18v13H3z M8 21h8 M12 17v4'],light:['Light','M12 3v2m0 14v2M3 12h2m14 0h2M5.64 5.64l1.42 1.42m9.88 9.88 1.42 1.42m0-11.32-1.42 1.42m-9.88 9.88-1.42 1.42M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8'],dark:['Dark','M20 15.5A8 8 0 0 1 8.5 4 8 8 0 1 0 20 15.5Z']};
-  function setTheme(value,save=false){if(!themeSelect||!themeButton)return;if(!themes[value])value='system';themeSelect.value=value;host.dataset.theme=value;themeButton.replaceChildren(figmaIcon(value));themeButton.title=`Theme: ${themes[value][0]}`;themeButton.setAttribute('aria-hidden','true');themeButton.tabIndex=-1;syncSettings();themeSelect.setAttribute('aria-label',`Theme: ${themes[value][0]}`);if(save)globalThis.chrome?.storage?.local?.set({designInspectTheme:value});}
-  if(themeSelect&&themeButton){setTheme('system');globalThis.chrome?.storage?.local?.get('designInspectTheme',result=>setTheme(result?.designInspectTheme||'system'));}
+  const themeButton=root.querySelector('.theme-icon');
+  let theme='system';
+  const themes={system:'System',light:'Light',dark:'Dark'};
+  function setTheme(value,save=false){
+    if(!themeButton)return;
+    theme=Object.hasOwn(themes,value)?value:'system';host.dataset.theme=theme;
+    themeButton.replaceChildren(figmaIcon(theme));themeButton.title=`Theme: ${themes[theme]}`;
+    themeButton.setAttribute('aria-hidden','true');syncSettings();
+    if(save)globalThis.chrome?.storage?.local?.set({designInspectTheme:theme});
+  }
+  setTheme('system');
+  globalThis.chrome?.storage?.local?.get('designInspectTheme',result=>setTheme(result?.designInspectTheme||'system'));
   function figmaIcon(name){
     const template=document.createElement('template');template.innerHTML=globalThis.designInspectFigmaIcons[name];
     const icon=template.content.firstElementChild;icon.classList.add('figma-icon');icon.setAttribute('aria-hidden','true');
@@ -402,7 +405,7 @@
   function syncSettings(){
     const label=root.querySelector('.unit-label');if(label){label.replaceChildren(figmaIcon(unit));label.setAttribute('aria-label',unit==='auto'?'Auto':unit);}
     for(const b of root.querySelectorAll('[data-unit]'))b.setAttribute('aria-pressed',String(b.dataset.unit===unit));
-    for(const b of root.querySelectorAll('[data-theme-choice]'))b.setAttribute('aria-pressed',String(b.dataset.themeChoice===themeSelect.value));
+    for(const b of root.querySelectorAll('[data-theme-choice]'))b.setAttribute('aria-pressed',String(b.dataset.themeChoice===theme));
   }
   function toggleSettings(open,focus=false){const menu=panel.querySelector('.settings-menu'),button=panel.querySelector('.settings-button');if(!menu||!button)return;menu.hidden=!open;button.setAttribute('aria-expanded',String(open));if(focus)(open?menu.querySelector('button'):button).focus();}
   function syncInspectButton(){const b=root.querySelector('.inspect-toggle');if(!b)return;b.dataset.mode=mode==='inspect'?'use':'inspect';b.setAttribute('aria-pressed',String(mode==='inspect'));b.setAttribute('aria-label',mode==='inspect'?'Stop inspecting':'Start inspecting');b.title=b.getAttribute('aria-label');b.querySelector('.inspect-state').replaceChildren(figmaIcon(mode==='inspect'?'stop':'play'));}
@@ -1018,13 +1021,11 @@ tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
     setEyedropper(eyedropper,false);
     const eyedropperButton=root.querySelector('.eyedropper-button');if(eyedropperButton)eyedropperButton.hidden=mode==='use';
     syncInspectButton();syncSettings();
-    if(unitSelect)unitSelect.value=unit;
     details();
     if (notify && isTop) bridge("settings");
   }
   function setUnit(nextUnit,notify=true) {
     unit=nextUnit;syncSettings();
-    if(unitSelect)unitSelect.value=unit;
     details();if(notify && isTop)bridge('settings');
   }
   async function claim() {
@@ -1075,10 +1076,9 @@ tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
         if(badge){if(type==='pointerdown')editSpacingBadge(badge,{x:event.clientX,y:event.clientY});block(event);return;}
         // Handle the switch before site capture listeners see an outside click.
         // Preventing pointer/mouse defaults also keeps focus on the page's trigger.
-        const control = root.elementFromPoint(event.clientX, event.clientY)?.closest("[data-mode], [data-eyedropper], .theme-select, .unit-select");
+        const control = root.elementFromPoint(event.clientX, event.clientY)?.closest("[data-mode], [data-eyedropper]");
         if(root.elementFromPoint(event.clientX,event.clientY)?.closest('[data-spacing-kind]')){block(event);return;}
         if (control) {
-          if(control.matches('.theme-select,.unit-select')){if(type==='pointerdown')try{control.showPicker();}catch{}block(event);return;}
           if (type === "click") {toggleSettings(false);if(control.dataset.mode)setMode(control.dataset.mode);else setEyedropper(!eyedropper);}
           block(event);
         } else if(mode==='inspect'&&type==='pointerdown'&&root.elementFromPoint(event.clientX,event.clientY)?.closest('button')) {
@@ -1144,13 +1144,12 @@ tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
   for(const b of root.querySelectorAll('[data-unit]'))listen(b,'click',()=>{setUnit(b.dataset.unit);});
   for(const b of root.querySelectorAll('[data-theme-choice]'))listen(b,'click',()=>{setTheme(b.dataset.themeChoice,true);});
 
-  if(unitSelect)listen(unitSelect,'change',event=>setUnit(event.currentTarget.value));
   panel.querySelector('.close').append(figmaIcon('close'));
-  if(themeSelect)listen(themeSelect,'change',()=>setTheme(themeSelect.value,true));
+  let frameOrigins=[];
   listen(panel.querySelector(".frame-access"), "click", async () => {
     const button = panel.querySelector(".frame-access");
     button.disabled = true;
-    const result = await bridge("open-access");
+    const result = await bridge("open-access",{origins:frameOrigins});
     button.disabled = false;
     if (!result || result.error) button.textContent = "Could not request access. Click to retry";
     else if (!result.granted) button.textContent = "Access denied. Click to retry";
@@ -1227,7 +1226,7 @@ tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
     if (message.type === "configure") {
       if(message.reviewContext)topReviewContext=message.reviewContext;
       if (Number.isInteger(message.frameId)) localFrameId = message.frameId;
-      unit = message.unit; if(unitSelect)unitSelect.value=unit; activeFrameId = message.activeFrameId;
+      unit=message.unit;activeFrameId=message.activeFrameId;
       setMode(message.mode, false);setEyedropper(message.eyedropper,false);
     } else if (message.type === "active") {
       activeFrameId = message.activeFrameId;
@@ -1249,6 +1248,7 @@ tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
       activeFrameId = 0; remote = null; details();
     } else if (message.type === "frame-status" && isTop) {
       const button = panel.querySelector(".frame-access");
+      frameOrigins=message.origins||[];
       button.hidden = message.blocked.length === 0;
       button.textContent = "Iframe appeared. Allow inspect";
     }

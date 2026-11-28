@@ -557,42 +557,46 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
     await page.eval(`{
       const style=document.createElement('style');style.textContent=':root {--base:8px;--scale:2;--alias:var(--base);--control:calc(var(--alias) * var(--scale));--cycle-a:var(--cycle-b);--cycle-b:var(--cycle-a)}';document.head.append(style);
       const parent=document.createElement('div');parent.style.cssText='--local:var(--base)';
-      const target=document.createElement('div');target.id='token-target';target.style.cssText='--base:32px;padding:var(--control);margin-left:var(--local);width:var(--alias)';parent.append(target);document.body.append(parent);
+      const target=document.createElement('div');target.id='token-target';target.style.cssText='--base:32px;padding:var(--control);margin-left:var(--local);width:var(--alias);font-size:var(--control)';target.textContent='Token sample';parent.append(target);document.body.append(parent);
     }`);
     await page.eval(readFileSync(join(repo,'css-values.js'),'utf8'));
     const resolved=await page.eval(`{
       const css=designInspectCSS,reader=css.sourceReader(document),el=document.querySelector('#token-target');
       const resolve=property=>{const source=reader.read(el,property);return reader.resolve(source.element,source.value)};
-      ({padding:resolve('padding-left'),margin:resolve('margin-left'),width:resolve('width'),cycle:reader.resolve(el,'var(--cycle-a)'),unknown:reader.resolve(el,'var(--missing, 4px)'),quoted:reader.resolve(el,'"var(--alias)"'),copy:css.variableCopyText('calc(var(--base) * 2)')});
+      ({padding:resolve('padding-left'),margin:resolve('margin-left'),width:resolve('width'),cycle:reader.resolve(el,'var(--cycle-a)'),unknown:reader.resolve(el,'var(--missing, 4px)'),quoted:reader.resolve(el,'"var(--alias)"')});
     }`);
     assert.equal(resolved.padding,'calc(var(--base) * var(--scale))');
     assert.equal(resolved.margin,'var(--base)');assert.equal(resolved.width,'var(--base)');
     assert.equal(resolved.cycle,'var(--cycle-a)');assert.equal(resolved.unknown,'var(--missing, 4px)');assert.equal(resolved.quoted,'"var(--alias)"');
-    assert.equal(resolved.copy,'calc(var(--base) * 2)');
     await page.eval("document.querySelector('#token-target').click()");
     await until(async()=>(await panelText()).includes('control'),'Original variable in panel');
+    await until(async()=>await control(a=>a.class==='panel',"return !!this.querySelector('[data-chain-token=\"var(--control)\"]')"),'Typography chain control');
+    const paddingTooltip=await control(a=>a.class==='box-model',`const badge=this.querySelector('.box-padding .box-var'),tooltip=this.getRootNode().querySelector('#box-variable-tooltip');badge.dispatchEvent(new Event('pointerenter'));const opened=!tooltip.hidden,chain=[...tooltip.children].map(n=>n.textContent);badge.dispatchEvent(new Event('pointerleave'));return {opened,chain,closed:tooltip.hidden};`);
+    assert.equal(paddingTooltip.opened,true,'Padding variable tooltip opens');
+    assert.deepEqual(paddingTooltip.chain,['var(--control)','→ calc(var(--alias) * var(--scale))','→ calc(var(--base) * var(--scale))'],'Padding tooltip retains the full variable chain');
+    assert.equal(paddingTooltip.closed,true,'Padding tooltip closes');
     const chainButton=a=>a['data-chain-token']==='var(--control)';
     assert.equal(await control(chainButton,`return this.closest('.value-stack').querySelector('.token').textContent`),'control','Original variable stays in header');
-    assert.equal(await control(chainButton,`return this.closest('.value-stack').querySelector('.token').getAttribute('aria-label')`),'Edit control','Variable name starts editing');
+    assert.equal(await control(chainButton,`return this.closest('.value-stack').querySelector('.token').getAttribute('aria-label')`),'Edit font-size','Variable name edits its typography property');
     assert.equal(await control(chainButton,`return this.getAttribute('aria-expanded')`),'false');
     assert.equal(await control(chainButton,`return this.getRootNode().getElementById(this.getAttribute('aria-controls')).hidden`),true,'Chain starts collapsed');
     await control(chainButton,'this.click()');
     assert.equal(await control(chainButton,`return this.getRootNode().getElementById(this.getAttribute('aria-controls')).textContent`),'control →\u00a0calc(alias * scale) →\u00a0calc(base * scale)');
     assert.equal(await control(chainButton,`return this.getRootNode().getElementById(this.getAttribute('aria-controls')).hidden`),false);
     assert.equal(await control(chainButton,`return this.closest('.value-stack').querySelector('.value-descriptions').hidden`),true,'Chain disclosure does not open computed value');
-    await control(chainButton,`this.closest('.token-control').querySelector('.value-toggle:not(.chain-toggle)').click()`);
+    await control(chainButton,`this.closest('.value-stack').querySelector('.value-toggle:not(.chain-toggle)').click()`);
     assert.equal(await control(chainButton,`const d=this.closest('.value-stack').querySelector('.value-descriptions');return !d.hidden && d.textContent.includes('16px')`),true,'Eye independently reveals final value');
     await delay(600);
     assert.equal(await control(chainButton,`return this.getAttribute('aria-expanded')`),'true','Chain stays open during live refresh');
     await control(chainButton,'this.click()');
     assert.equal(await control(chainButton,`return this.closest('.value-stack').querySelector('.value-descriptions').hidden`),false,'Closing chain keeps computed value visible');
-    await page.eval("document.querySelector('#token-target').style.padding='var(--base)'");
+    await page.eval("document.querySelector('#token-target').style.fontSize='var(--base)'");
     await until(async()=>!(await control(a=>a.class==='panel',`return [...this.querySelectorAll('.chain-toggle')].some(b=>b.dataset.chainToken==='var(--control)')`)),'Removed alias removes chain button');
     assert.equal(await control(a=>a.class==='panel',`return [...this.querySelectorAll('.chain-toggle')].some(b=>b.dataset.chainToken==='var(--base)')`),false,'Terminal variable has no chain button');
-    await page.eval("document.querySelector('#token-target').style.padding='var(--control)';document.querySelector('#token-target').click()");
+    await page.eval("document.querySelector('#token-target').style.fontSize='var(--control)';document.querySelector('#token-target').click()");
     await until(async()=>await control(a=>a.class==='panel',`return [...this.querySelectorAll('.chain-toggle')].some(b=>b.dataset.chainToken==='var(--control)' && b.getAttribute('aria-expanded')==='false')`),'New selection resets chain');
     const crossContext=await frameContext('cross');
-    await page.eval("document.querySelector('#inside').style.cssText='--alias:var(--base);--base:12px;padding:var(--alias)'",crossContext);
+    await page.eval("document.querySelector('#inside').style.cssText='--alias:var(--base);--base:12px;padding:var(--alias);font-size:var(--alias)'",crossContext);
     await clickInside(crossContext);
     await until(async()=>await control(a=>a.class==='panel',`return this.querySelector('.name')?.textContent.includes('#inside') && [...this.querySelectorAll('.chain-toggle')].some(b=>b.dataset.chainToken==='var(--alias)')`),'Frame variable selection');
     const frameChain=a=>a['data-chain-token']==='var(--alias)';
@@ -603,9 +607,9 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
     const fontChain=a=>a['data-chain-token']==='var(--font-ui)';
     await control(fontChain,'this.click()');
     assert.equal(await control(fontChain,`return this.getRootNode().getElementById(this.getAttribute('aria-controls')).textContent`),'font-ui →\u00a0font-root');
-    await control(a=>a.class==='unit-select',"this.value='rem';this.dispatchEvent(new Event('change',{bubbles:true}))");
+    await control(a=>a['data-unit']==='rem',"this.click()");
     assert.equal(await control(fontChain,`return this.getAttribute('aria-expanded')`),'true','Unit update keeps chain open');
-    console.log('PASS: original token/copy, independent chain/eye, NBSP arrows, live/unit updates, cycles, frames and grouped typography');return;
+    console.log('PASS: padding tooltip, original typography token, independent chain/eye, NBSP arrows, live/unit updates, cycles, frames and grouped typography');return;
   }
   if(process.env.HOVER_TEST) {
     await page.eval(`{
@@ -799,7 +803,7 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
     const shot=await page.call('Page.captureScreenshot',{format:'png',clip});
     writeFileSync(process.env.SCREENSHOT_PATH,Buffer.from(shot.data,'base64'));
   }
-  await control(a=>a.class==='unit-select',"this.value='rem';this.dispatchEvent(new Event('change',{bubbles:true,composed:true}));");
+  await control(a=>a['data-unit']==='rem',"this.click();");
   await until(async()=>(await panelText()).includes('1.5rem'),'Frame-local rem base');
 
   async function enter(modifiers=0) {

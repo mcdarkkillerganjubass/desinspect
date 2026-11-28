@@ -79,7 +79,7 @@
     click(inspectToggle);assert(menu.hidden,'Other header control dismisses menu');click(inspectToggle);
     click(settings);click(trigger);assert(menu.hidden,'Outside click dismisses menu');
     click(settings);click(settings);assert(menu.hidden,'Trigger closes menu');
-    assert(inspectorRoot.querySelector('.unit-select').options.length===4,'Four unit choices');
+    assert(inspectorRoot.querySelectorAll('[data-unit]').length===4,'Four unit choices');
     const ordered=[...inspectorRoot.querySelector('.content').querySelectorAll('.box-model,.size-table,.property-group')].map(node=>node.dataset.group || (node.className==='box-model'?'box':'sizes'));
     assert(ordered.join(',')==='box,sizes,Appearance,Layout,Typography','Requested content order');
     assert(![...inspectorRoot.querySelectorAll('h3')].some(node=>node.textContent==='Appearance'),'Appearance title removed');
@@ -151,9 +151,9 @@
     assert([...basic.querySelectorAll('dt')].some(n=>n.textContent==='border'),'Uniform border grouped into one parameter');
     assert(![...basic.querySelectorAll('dt')].some(n=>n.textContent==='border-radius'),'Radius stays only in box model');
     trigger.style.transform='';click(trigger);await tick();
-    const setUnits=value=>{const select=inspectorRoot.querySelector('.unit-select');select.value=value;select.dispatchEvent(new Event('change',{bubbles:true,composed:true}));};
+    const setUnits=value=>{inspectorRoot.querySelector(`[data-unit=${value}]`).click();};
     setUnits('rem');await tick();
-    assert(inspectorRoot.querySelector('.unit-select').value==='rem','Selected unit');
+    assert(inspectorRoot.querySelector('[data-unit=rem]').getAttribute('aria-pressed')==='true','Selected unit');
     assert(inspectorRoot.querySelector('.content').textContent.includes('1.5rem'), 'rem conversion');
     assert([...inspectorRoot.querySelectorAll('.table-row')].find(row=>row.querySelector('.color-preview')&&row.querySelector('.token')).querySelector('.value-descriptions').hidden,'New selection resets disclosure');
     trigger.style.borderRadius='8px';click(trigger);await tick();

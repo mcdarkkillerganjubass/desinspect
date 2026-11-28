@@ -16,7 +16,7 @@ Design Inspect helps designers manually check a live website's geometry and styl
 | [Box model](specs/box-model/spec.md) | Margin/stroke/padding diagram, stacked side units, nested corner radii, content dimensions and live spacing fills. | `inspect.js`, `spacing.js`, `box-model.js` |
 | [Measurements and units](specs/measurements-and-units/spec.md) | Thin orange lines, persistent non-overlapping badges, unit segments and formatting. | `geometry.js`, `css-values.js`, `inspect.js` |
 | [Eyedropper](specs/eyedropper/spec.md) | Inspect-only I shortcut, rendered pixels, variable attribution, shared popover and temporary local capture. | `background.js`, `inspect.js` |
-| [Iframe inspection](specs/iframe-inspection/spec.md) | Shared panel, per-document inspection, host access, synchronization and frame lifecycle. | `background.js`, `inspect.js`, `frame-access.html`, `frame-access.js` |
+| [Iframe inspection](specs/iframe-inspection/spec.md) | Shared panel, per-document inspection, host access, synchronization and frame lifecycle. | `background.js`, `inspect.js` |
 
 ## Architecture
 

@@ -94,7 +94,7 @@
       if(!prepared.automaticFor&&['border','border-style','border-top','border-right','border-bottom','border-left'].includes(p))for(const s of elements.get(el)?.values()||[])for(const [property,contexts]of s.targets)if(contexts.get(active)?.automaticFor&&(p==='border'||p==='border-style'||property===p+'-style'))contexts.delete(active);
       for(const item of prepared.autoStyles||[])commit(el,item.property,item.prepared);
       const s=state(el,p);if(!s.targets.has(p))s.targets.set(p,new Map());
-      if(prepared.remove)s.targets.get(p).delete(active);else s.targets.get(p).set(active,prepared);
+      s.targets.get(p).set(active,prepared);
       render();
       return document.defaultView.getComputedStyle(el).getPropertyValue(p);
     }

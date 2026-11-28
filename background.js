@@ -67,7 +67,7 @@ async function attachFrames(tabId) {
     catch { blocked.push({frameId:f.frameId, url:f.url}); }
   }));
   frameAccessOrigins.set(tabId, [...new Set(blocked.map(f => originPattern(f.url)).filter(Boolean))]);
-  await send(tabId, 0, {type:"frame-status", blocked});
+  await send(tabId, 0, {type:"frame-status", blocked, origins:frameAccessOrigins.get(tabId)});
   return blocked;
 }
 async function toggle(tab) {
@@ -197,7 +197,9 @@ async function handle(message, sender) {
     if (await state(tabId)) await broadcast(tabId, {type:"modifiers", alt:!!message.alt}, frameId);
   } else if (message.type === "open-access" && frameId === 0) {
     // Request before awaiting anything so the content-script click retains its user gesture.
-    const origins = frameAccessOrigins.get(tabId) || [];
+    // The isolated panel retains browser-discovered hosts across worker restarts.
+    const origins = frameAccessOrigins.get(tabId) || (Array.isArray(message.origins)?message.origins:[]).filter(origin=>
+      typeof origin==='string' && originPattern(origin)===origin && !origin.includes('//*'));
     const granted = !origins.length || await chrome.permissions.request({origins});
     if (!granted) return {granted:false};
     const blocked = await attachFrames(tabId);

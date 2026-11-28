@@ -9,7 +9,7 @@ assert.equal(tokens.get('color-surface-panel'),'#ffffff');
 assert.notEqual(tokens.get('color-surface-panel','dark'),tokens.get('color-surface-panel'));
 assert.throws(()=>tokens.get('missing'));
 for(const asset of tokens.fontAssets)assert(fs.existsSync(`fonts/${asset.file}`));
-for(const file of ['inspect.js','review-panel.js','frame-access.html','figma-icons.js','design-tokens.js']){
+for(const file of ['inspect.js','review-panel.js','figma-icons.js','design-tokens.js']){
   const source=fs.readFileSync(file,'utf8');
   for(const match of source.matchAll(/var\(--di-([\w-]+)/g))assert.doesNotThrow(()=>tokens.get(match[1]),`${file}: ${match[1]}`);
 }
