@@ -2,22 +2,25 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
-const code=readFileSync(join(__dirname,'../frame-access.js'),'utf8');
+const code=readFileSync(join(__dirname,'../background.js'),'utf8');
 async function check(granted) {
-  const messages=[], requests=[], handlers={};
-  const button={disabled:true,addEventListener:(type,fn)=>handlers[type]=fn};
-  const status={}, list={children:[],append(node){this.children.push(node);}};
-  const document={querySelector:selector=>({'#grant':button,'#status':status,'#origins':list})[selector],createElement:()=>({})};
-  const chrome={runtime:{sendMessage:async message=>{messages.push(message);return message.type==='access-info'?{origins:['https://frame.example/*']}:{ok:true};}},permissions:{request:args=>{requests.push(args);return Promise.resolve(granted);}}};
-  vm.runInNewContext(code,{chrome,document,location:{search:'?tab=12'},URLSearchParams,Promise,Error});
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(button.disabled,false);
-  handlers.click();
-  assert.equal(requests.length,1,'Permission requested synchronously in click handler');
-  assert.equal(requests[0].origins[0],'https://frame.example/*');
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(messages.some(m=>m.type==='refresh-frames'),granted);
-  if(granted) assert.equal(button.hidden,true);
-  else {assert.equal(button.disabled,false);assert.match(status.textContent,/не выдан/);}
+  const requests=[];
+  const event={addListener(){}};
+  const context=vm.createContext({importScripts(){},designInspectReview:{createStore:()=>({})},console,URL,
+    chrome:{runtime:{onMessage:event},action:{onClicked:event},webNavigation:{onCommitted:event,onDOMContentLoaded:event},
+      debugger:{onDetach:event},tabs:{onRemoved:event},permissions:{request:options=>{requests.push(options);return Promise.resolve(granted);}}}});
+  vm.runInContext(code,context);
+  vm.runInContext("frameAccessOrigins.set(12,['https://frame.example/*']);globalThis.attached=0;attachFrames=async()=>{attached++;return []}",context);
+  const result=vm.runInContext("handle({type:'open-access'},{tab:{id:12},frameId:0})",context);
+  assert.equal(requests.length,1,'Permission requested synchronously before any await');
+  assert.deepEqual(Array.from(requests[0].origins),['https://frame.example/*']);
+  assert.equal((await result).granted,granted);
+  assert.equal(context.attached,granted?1:0,'Attach only after approval');
+  await vm.runInContext("handle({type:'open-access'},{tab:{id:12},frameId:1})",context);
+  assert.equal(requests.length,1,'Subframes cannot initiate permission requests');
+  vm.runInContext('frameAccessOrigins.delete(12)',context);
+  const retry=await vm.runInContext("handle({type:'open-access'},{tab:{id:12},frameId:0})",context);
+  assert.equal(retry.granted,true,'Without cached hosts, rediscover frames without a blanket request');
+  assert.equal(requests.length,1);
 }
-(async()=>{await check(false);await check(true);console.log('PASS: frame permission approval and denial');})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{await check(false);await check(true);console.log('PASS: direct iframe access approval, denial, sender validation, and rediscovery');})().catch(error=>{console.error(error);process.exitCode=1;});

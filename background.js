@@ -7,6 +7,7 @@ const send = (tabId, frameId, message) => chrome.tabs.sendMessage(tabId, {channe
 const state = tabId => send(tabId, 0, {type:"get-state"});
 const frames = async tabId => (await chrome.webNavigation.getAllFrames({tabId})) || [];
 const fontCache=new Map();
+const frameAccessOrigins=new Map();
 let captureBusy=false, lastCapture=0;
 const pixelCache=new Map();
 const hoverPins=new Map();
@@ -65,12 +66,13 @@ async function attachFrames(tabId) {
     try { await inject(tabId, f.frameId); }
     catch { blocked.push({frameId:f.frameId, url:f.url}); }
   }));
+  frameAccessOrigins.set(tabId, [...new Set(blocked.map(f => originPattern(f.url)).filter(Boolean))]);
   await send(tabId, 0, {type:"frame-status", blocked});
   return blocked;
 }
 async function toggle(tab) {
   try {
-    if (await state(tab.id)) {pixelCache.delete(tab.id);await releaseHover(tab.id);await broadcast(tab.id, {type:"destroy"});}
+    if (await state(tab.id)) {frameAccessOrigins.delete(tab.id);pixelCache.delete(tab.id);await releaseHover(tab.id);await broadcast(tab.id, {type:"destroy"});}
     else {await inject(tab.id, 0); await attachFrames(tab.id);}
     await chrome.action.setBadgeText({tabId:tab.id, text:""});
     await chrome.action.setTitle({tabId:tab.id, title:"Toggle Design Inspect"});
@@ -89,16 +91,6 @@ function originPattern(url) {
   } catch { return null; }
 }
 async function handle(message, sender) {
-  const accessPage = sender.url?.startsWith(chrome.runtime.getURL("frame-access.html"));
-  if (accessPage && ["access-info", "refresh-frames"].includes(message.type)) {
-    const tabId = message.tabId;
-    if (!Number.isInteger(tabId) || !(await state(tabId))) return {error:"Inspector is closed. Reopen it on the original page."};
-    if (message.type === "refresh-frames") {const blocked = await attachFrames(tabId); return {ok:true, blockedCount:blocked?.length || 0};}
-    const origins = [...new Set((await frames(tabId)).filter(f => f.frameId !== 0).map(f => originPattern(f.url)).filter(Boolean))];
-    const missing = [];
-    for (const origin of origins) if (!(await chrome.permissions.contains({origins:[origin]}))) missing.push(origin);
-    return {origins:missing};
-  }
   const tabId = sender.tab?.id;
   if (tabId === undefined || !Number.isInteger(sender.frameId)) return;
   const frameId = sender.frameId;
@@ -187,7 +179,7 @@ async function handle(message, sender) {
     if (current) await send(tabId, frameId, {type:"configure", frameId, ...current});
     else if (frameId !== 0) await send(tabId, frameId, {type:"destroy"});
   } else if (message.type === "close" && frameId === 0) {
-    pixelCache.delete(tabId);await releaseHover(tabId);await broadcast(tabId, {type:"destroy"}, 0);
+    frameAccessOrigins.delete(tabId);pixelCache.delete(tabId);await releaseHover(tabId);await broadcast(tabId, {type:"destroy"}, 0);
   } else if (message.type === "settings" && frameId === 0) {
     const current = await state(tabId);
     if (current) {if(!current.eyedropper)pixelCache.delete(tabId);await broadcast(tabId, {type:"configure", ...current}, 0);}
@@ -204,7 +196,12 @@ async function handle(message, sender) {
   } else if (message.type === "modifiers") {
     if (await state(tabId)) await broadcast(tabId, {type:"modifiers", alt:!!message.alt}, frameId);
   } else if (message.type === "open-access" && frameId === 0) {
-    await chrome.windows.create({url:chrome.runtime.getURL(`frame-access.html?tab=${tabId}`), type:"popup", width:480, height:440});
+    // Request before awaiting anything so the content-script click retains its user gesture.
+    const origins = frameAccessOrigins.get(tabId) || [];
+    const granted = !origins.length || await chrome.permissions.request({origins});
+    if (!granted) return {granted:false};
+    const blocked = await attachFrames(tabId);
+    return {granted:true, blockedCount:blocked?.length || 0};
   } else if (message.type === "frames-changed") {
     await attachFrames(tabId);
   }
@@ -215,7 +212,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 chrome.webNavigation.onCommitted.addListener(async ({tabId, frameId}) => {
-  if(frameId===0){pixelCache.delete(tabId);await releaseHover(tabId);}
+  if(frameId===0){frameAccessOrigins.delete(tabId);pixelCache.delete(tabId);await releaseHover(tabId);}
   if (frameId !== 0) {
     const current = await state(tabId);
     if (current?.activeFrameId === frameId) {
@@ -229,4 +226,4 @@ chrome.webNavigation.onDOMContentLoaded.addListener(async ({tabId, frameId}) => 
 });
 
 chrome.debugger.onDetach.addListener(source=>{if(source.tabId!==undefined&&hoverPins.has(source.tabId)){hoverPins.delete(source.tabId);send(source.tabId,0,{type:'hover-pin-lost'});}});
-chrome.tabs.onRemoved.addListener(tabId=>{pixelCache.delete(tabId);releaseHover(tabId);reviewStore.run(tabId,'close').catch(error=>console.warn('Review close:',error));});
+chrome.tabs.onRemoved.addListener(tabId=>{frameAccessOrigins.delete(tabId);pixelCache.delete(tabId);releaseHover(tabId);reviewStore.run(tabId,'close').catch(error=>console.warn('Review close:',error));});

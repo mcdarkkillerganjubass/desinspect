@@ -170,14 +170,13 @@ The inspector attaches to accessible iframes, including nested frames. Each fram
 
 Mode, units, shortcuts, and Alt modifier state are coordinated across frames. Measurements remain local to one document. Font-relative conversions use the inspected frame's fonts, not the main page's fonts.
 
-If a frame cannot be inspected, the panel shows **Enable iframe access…**:
+If a frame cannot be inspected, the panel shows **Iframe appeared. Allow inspect**:
 
-1. Click the button to open the frame-access window.
-2. Review the missing HTTP/HTTPS host permissions listed there.
-3. Click **Разрешить доступ** (Allow access) and accept Chrome's permission prompt.
-4. Return to the website. Accessible frames attach without reloading it.
+1. Click the button to open Chrome's permission prompt directly.
+2. Accept access to the requested iframe domains.
+3. Select an element inside the iframe; accessible frames attach without reloading the page.
 
-The access window currently uses Russian labels. If permissions already exist, it offers **Повторить подключение** (Retry connection). Denying permission leaves the main-page inspector working; browser-restricted frames can remain unavailable after access is granted.
+There is no intermediate extension window. Denying permission leaves the main-page inspector working and offers a retry. Browser-restricted frames can remain unavailable after access is granted.
 
 New and reloaded frames attach automatically while the inspector is open. Navigating or removing the selected frame clears its selection. Closing the inspector removes its overlays and event handlers from connected frames.
 
@@ -219,7 +218,6 @@ The extension uses plain JavaScript and Manifest V3. No package installation is 
 | `layout-icons.js` | Layout property explanations, eye icons and the replacement marker. |
 | `spacing.js` | Margin/padding bands and conservative flex/grid gap geometry. |
 | `box-model.js` | Side-unit splitting, corner-radius resolution and nested diagram radius calculations. |
-| `frame-access.html` / `frame-access.js` | Optional host permission interface. |
 
 Run the lightweight checks:
 
@@ -233,7 +231,7 @@ node review.test.cjs
 node tests/frame-access.cjs
 ```
 
-These cover rectangle geometry, unit conversion, selector specificity, declaration/layer precedence, inaccessible stylesheets, and the permission UI's approval/denial paths using mocked APIs.
+These cover rectangle geometry, unit conversion, selector specificity, declaration/layer precedence, inaccessible stylesheets, and the permission UI's approval/denial paths using mocked APIs. The direct native iframe prompt and selection after approval were also checked manually in Chrome.
 
 Open `tests/browser.html` in a browser for the standalone inspector checks. It should display **PASS** after checking variables, Auto/rem units, box-model sides and content dimensions, dropdown/focus preservation, and cleanup.
 
@@ -245,7 +243,7 @@ CHROME_BIN="/absolute/path/to/chrome" node tests/extension.cjs
 
 Run `REVIEW_TEST=1 node tests/extension.cjs` for the recording UI, original-to-final differences, comments, reset, comparison, viewport separation, SPA URLs, permitted frames, Markdown download, reload, Stop/New, and tab closure. `node review.test.cjs` covers the model/export and mocked storage, worker restart, independent tabs, browser-session loss, concurrency, and write failures. These checks do not claim full browser-cascade or arbitrary application rerender support.
 
-The runner creates two local HTTP servers, a temporary extension copy, and a temporary browser profile. Only the test manifest pre-grants localhost access; the production manifest is unchanged. Checks cover bundled Inter under restrictive page font policies, fixed headers, horizontal resizing, DOM attributes and hierarchy selection, persistent nonoverlapping measurement badges, same-origin and cross-origin frames, one shared panel, the missing-domain permission list, CSS variables, frame-relative rem conversion, the box model, routed shortcuts and Alt measurements, mode synchronization, dropdown/focus preservation, dynamic frame attachment/removal, and cleanup. Existing browser profiles are not used.
+The runner creates two local HTTP servers, a temporary extension copy, and a temporary browser profile. Only the test manifest pre-grants localhost access; the production manifest is unchanged. Checks cover bundled Inter under restrictive page font policies, fixed headers, horizontal resizing, DOM attributes and hierarchy selection, persistent nonoverlapping measurement badges, same-origin and cross-origin frames, one shared panel, direct iframe permission requests and denial retry, CSS variables, frame-relative rem conversion, the box model, routed shortcuts and Alt measurements, mode synchronization, dropdown/focus preservation, dynamic frame attachment/removal, and cleanup. Existing browser profiles are not used.
 
 Run `EYEDROPPER_TEST=1 node tests/extension.cjs` for real screenshot sampling, variable/gradient colors, cross-origin iframe pointer mapping, I/Escape, capture-error handling, mode restrictions and cleanup. That isolated test copy grants `<all_urls>` so automated activation can capture without a real toolbar gesture; production permissions are unchanged.
 

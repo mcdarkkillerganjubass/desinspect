@@ -39,15 +39,15 @@ Use/Inspect and unit choices SHALL be shared across injected frames. Enter, Shif
 - **THEN** that frame's measurement lines are removed
 
 ### Requirement: Optional host-access interface
-If frame injection fails, the shared panel SHALL expose an iframe-access control with the blocked-frame count. The control SHALL open an extension-owned window listing missing host permissions for current HTTP/HTTPS frame URLs, deduplicated as scheme/hostname match patterns. It SHALL request optional permissions only after a direct user click and SHALL NOT require blanket access at installation.
+If frame injection fails, the shared panel SHALL expose an iframe-access control when frames are blocked. The control SHALL request optional host permissions directly through Chrome’s native permission prompt, without an intermediate extension window. Requested hosts SHALL be limited to blocked HTTP/HTTPS frame URLs, deduplicated as scheme/hostname match patterns. It SHALL request optional permissions only after a direct user click and SHALL NOT require blanket access at installation.
 
 #### Scenario: Frame host lacks permission
 - **WHEN** an embedded HTTP frame uses a host not covered by existing access
-- **AND** the user opens the access window
-- **THEN** that missing host pattern is listed and an explicit permission-request action is available
+- **AND** the user clicks the iframe-access control
+- **THEN** Chrome receives a permission request for that blocked host directly, without an intermediate extension window
 
 ### Requirement: Permission outcomes and retries
-Granting access SHALL trigger a new attachment attempt without reloading the website. Denial SHALL leave the inspector working on already accessible documents and allow retry. If permissions already exist, the window SHALL offer reconnection. Remaining blocked frames or a closed inspector SHALL produce an explanatory status instead of a false success claim.
+Granting access SHALL trigger a new attachment attempt without reloading the website. Denial SHALL leave the inspector working on already accessible documents and allow retry. If permissions already exist, the control SHALL retry attachment. Remaining blocked frames or a closed inspector SHALL produce an explanatory status instead of a false success claim.
 
 #### Scenario: Host access approved
 - **WHEN** Chrome grants the requested optional host permissions
@@ -56,10 +56,10 @@ Granting access SHALL trigger a new attachment attempt without reloading the web
 #### Scenario: Host access denied
 - **WHEN** the permission request is denied
 - **THEN** no new attachment is requested by that approval flow
-- **AND** the access window allows retry while the existing inspector remains active
+- **AND** the panel control allows retry while the existing inspector remains active
 
 ### Requirement: Explicit permission lifetime and localization
-Additional host permissions SHALL be governed by Chrome's persistent site-access controls and remain independently revocable. The current access window SHALL retain its Russian labels, while the main inspection panel uses English labels; documentation SHALL explain those existing labels rather than claim the entire interface is English.
+Additional host permissions SHALL be governed by Chrome's persistent site-access controls and remain independently revocable. The inspection panel SHALL use English labels. Chrome SHALL control the language and presentation of its native permission prompt.
 
 #### Scenario: Reopen an already permitted host
 - **WHEN** a later session encounters a frame covered by a retained host grant

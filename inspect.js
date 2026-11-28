@@ -1147,7 +1147,15 @@ tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
   if(unitSelect)listen(unitSelect,'change',event=>setUnit(event.currentTarget.value));
   panel.querySelector('.close').append(figmaIcon('close'));
   if(themeSelect)listen(themeSelect,'change',()=>setTheme(themeSelect.value,true));
-  listen(panel.querySelector(".frame-access"), "click", () => bridge("open-access"));
+  listen(panel.querySelector(".frame-access"), "click", async () => {
+    const button = panel.querySelector(".frame-access");
+    button.disabled = true;
+    const result = await bridge("open-access");
+    button.disabled = false;
+    if (!result || result.error) button.textContent = "Could not request access. Click to retry";
+    else if (!result.granted) button.textContent = "Access denied. Click to retry";
+    else if (result.blockedCount) button.textContent = "Iframe unavailable. Retry inspect";
+  });
   let drag,resize;
   const resizeHandles=[...root.querySelectorAll('.resize-handle')];
   function syncHandles() {

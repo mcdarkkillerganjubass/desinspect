@@ -91,7 +91,8 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
   // Only the test copy pre-grants localhost; 127.0.0.1 stays denied.
   manifest.host_permissions=process.env.EYEDROPPER_TEST?['<all_urls>']:['http://localhost/*'];
   writeFileSync(join(extension,'manifest.json'),JSON.stringify(manifest));
-  for(const file of ['background.js','design-tokens.js','figma-icons.js','geometry.js','css-values.js','layout-icons.js','spacing.js','box-model.js','review.js','review-overrides.js','review-panel.js','inspect.js','frame-access.html','frame-access.js']) copyFileSync(join(repo,file),join(extension,file));
+  for(const file of ['background.js','design-tokens.js','figma-icons.js','geometry.js','css-values.js','layout-icons.js','spacing.js','box-model.js','review.js','review-overrides.js','review-panel.js','inspect.js']) copyFileSync(join(repo,file),join(extension,file));
+  require('node:fs').cpSync(join(repo,'assets','icons'),join(extension,'assets','icons'),{recursive:true});
   require('node:fs').mkdirSync(join(extension,'assets','fix-notes'),{recursive:true});
   for(const file of ['copyAll','record','pencil','complete','copy','more','folder','delete','edit'])copyFileSync(join(repo,'assets','fix-notes',file+'.svg'),join(extension,'assets','fix-notes',file+'.svg'));
   require('node:fs').mkdirSync(join(extension,'fonts'));
@@ -676,14 +677,14 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
   assert.equal(await page.eval("document.querySelector('#cross').contentDocument===null"),true,'Fixture must be cross-origin');
   assert.equal((await nodes()).filter(n=>n.attributes?.includes('panel')).length,1,'One panel across accessible frames');
   await until(async()=>(await control(a=>a.class==='frame-access','return !this.hidden;')),'permission button for denied domain');
-  await control(a=>a.class==='frame-access','this.click();');
-  const accessTarget=await until(async()=>(await targets()).find(t=>t.url.includes('/frame-access.html?tab=')),'permission page');
-  const access=await CDP.connect(accessTarget.webSocketDebuggerUrl);
-  try {
-    await until(()=>access.eval("document.querySelector('#grant')?.disabled === false"),'permission list loaded');
-    assert.equal(await access.eval("document.querySelector('#origins').textContent"),'http://127.0.0.1/*','Only the missing frame domain is requested');
-    await access.call('Page.close');
-  } finally {access.close();}
+  // Native approval was verified manually; mock denial to keep headless runs deterministic.
+  await worker.eval('globalThis.accessRequests=[];chrome.permissions.request=async options=>{accessRequests.push(options);return false;}');
+  const accessRect=await control(a=>a.class==='frame-access','const r=this.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};');
+  await page.call('Input.dispatchMouseEvent',{type:'mousePressed',...accessRect,button:'left',clickCount:1});
+  await page.call('Input.dispatchMouseEvent',{type:'mouseReleased',...accessRect,button:'left',clickCount:1});
+  await until(async()=>await control(a=>a.class==='frame-access',"return this.textContent.includes('Access denied') && !this.disabled;"),'Permission denial allows retry');
+  assert.deepEqual(await worker.eval('accessRequests'),[{origins:['http://127.0.0.1/*']}],'Only blocked frame domain requested');
+  assert(!(await targets()).some(t=>t.url.includes('/frame-access.html')),'No intermediate extension window');
   // Keep a deterministic pair of rectangles clear of the floating panel.
   await page.eval(`{
     const scene=document.createElement('div');scene.id='measure-scene';scene.style.cssText='position:fixed;inset:0;background:#f4f5f8;z-index:1000000';
