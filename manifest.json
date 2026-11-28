@@ -3,8 +3,33 @@
   "name": "Design Inspect",
   "version": "0.3.0",
   "description": "Inspect live page geometry and computed CSS with Figma-like shortcuts.",
-  "permissions": ["activeTab", "scripting", "webNavigation", "storage", "debugger"],
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
-  "action": { "default_title": "Toggle Design Inspect" },
-  "background": { "service_worker": "background.js" }
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "webNavigation",
+    "storage",
+    "debugger"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "action": {
+    "default_title": "Toggle Design Inspect",
+    "default_icon": {
+      "16": "assets/icons/16.png",
+      "32": "assets/icons/32.png",
+      "48": "assets/icons/48.png",
+      "128": "assets/icons/128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "assets/icons/16.png",
+    "32": "assets/icons/32.png",
+    "48": "assets/icons/48.png",
+    "128": "assets/icons/128.png"
+  }
 }
