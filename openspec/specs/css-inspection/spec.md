@@ -16,7 +16,7 @@ The current property inventory is:
 ## Requirements
 
 ### Requirement: Property sections
-For one connected selected element in Inspect mode, the panel SHALL display the property sections in the inventory above in addition to the box model. Values SHALL be read-only and update while inspection is active. Source lookup SHALL be refreshed periodically rather than promising synchronous tracking of every stylesheet mutation.
+For one connected selected element in Inspect mode, the panel SHALL display applicable property sections from the inventory above, following the section applicability rules. Values SHALL be read-only and update while inspection is active. Source lookup SHALL be refreshed periodically rather than promising synchronous tracking of every stylesheet mutation.
 
 #### Scenario: Read a button's properties
 - **WHEN** a single button is selected
@@ -33,7 +33,7 @@ The panel SHALL show width and height in one two-column table without a visible 
 - **AND** no separate Size on screen or CSS size heading is displayed
 
 ### Requirement: Variable expression and computed value
-For available var-based declarations, the panel SHALL show compact names, hiding `var(...)` and `--` while preserving prefixes such as `tui-`. Computed-value descriptions SHALL be collapsed by default and revealed with an eye button. Full original expressions SHALL remain available in tooltips; compact labels SHALL preserve the meaning of fallbacks and calculations.
+For available var-based declarations, the panel SHALL show compact names, hiding `var(...)` and `--` while preserving prefixes such as `tui-`. The main label SHALL retain the original authored variable or expression. Resolvable aliases SHALL expose their expansion chain through a separate disclosure control, preserving calculations and the context where each custom property was defined. Cyclic or unavailable definitions SHALL retain their original reference. Computed-value descriptions SHALL be collapsed by default and revealed with an eye button. Full original expressions SHALL remain available in tooltips; compact labels SHALL preserve the meaning of fallbacks and calculations.
 
 #### Scenario: Spacing variable
 - **WHEN** a selected property's available source is `var(--space-4)` and its computed value is `24px`
@@ -68,7 +68,7 @@ The scrollable property body SHALL show the compact spacing diagram, dimensions,
 - **AND** the preview and parameter label stay aligned with the first line instead of vertically centering over the wrapped block
 
 ### Requirement: Variable copying and feedback
-Clicking a compact variable-name button SHALL copy its full CSS name including `--`. A primary var with fallbacks SHALL copy the primary name; calculations referencing one distinct variable SHALL copy that name. Expressions with multiple distinct variables and no single primary var SHALL copy the original expression. Success SHALL show Copied above the clicked name, clamped within the viewport and placed below when there is no space above. Failure SHALL show an error, not success.
+Clicking a compact variable-name button SHALL copy its full CSS name including `--`. A primary var with fallbacks SHALL copy the primary name; calculations SHALL copy the original authored CSS expression, including var() syntax. Success SHALL show Copied above the clicked name, clamped within the viewport and placed below when there is no space above. Failure SHALL show an error, not success.
 
 #### Scenario: Copy a prefixed variable
 - **WHEN** the user clicks the displayed tui-font-text-m name
@@ -144,3 +144,76 @@ The extension SHALL distinguish screen bounds, CSS dimensions and source express
 #### Scenario: Transformed element
 - **WHEN** a CSS transform changes the selected element's bounding rectangle
 - **THEN** the primary dimension reflects that rectangle while the CSS value is shown below it as a secondary description with a css badge
+
+### Requirement: Typography section applicability
+In the default applicable-properties view, the Typography section SHALL appear when the selected element has at least one direct, non-whitespace DOM text node with a nonzero rendered text rectangle OR an accessible declaration on the element itself explicitly sets font, font-family, font-size, font-weight, line-height, letter-spacing or color. Explicit declarations SHALL include matching stylesheet rules and inline styles; inherited declarations alone SHALL NOT qualify. Text belonging to descendant elements SHALL NOT make a container eligible. Hidden visibility or zero opacity on the element or an ancestor SHALL disqualify its text from the visible-text criterion; an explicit typography declaration SHALL still qualify. Text outside the viewport SHALL remain eligible; viewport intersection and occlusion SHALL NOT determine applicability. Image alt attributes, placeholders and pseudo-element content SHALL NOT count as direct DOM text. The same rule SHALL apply in connected frames and SHALL update when the selected element's content changes.
+
+#### Scenario: Card containing a text child
+- **WHEN** a selected card contains a child heading but has no own text or explicit supported typography declaration
+- **THEN** its Typography section is omitted
+- **AND** selecting the heading shows its Typography section
+
+#### Scenario: Empty avatar
+- **WHEN** an avatar contains only an image or no content and has no explicit supported typography declaration
+- **THEN** its Typography section is omitted
+- **AND** an avatar with directly rendered text initials shows Typography
+
+#### Scenario: Hidden or whitespace-only text
+- **WHEN** the selected element has no explicit supported typography declaration and its direct text is only whitespace, has no rendered area, or is hidden by visibility or zero opacity
+- **THEN** its Typography section is omitted
+
+### Requirement: Section and layout property applicability
+Section visibility SHALL depend on whether the section describes the selected element, not on whether its computed values are nonzero or differ from defaults. Applicability SHALL be recalculated during live inspection and SHALL apply identically in connected frames.
+
+- Dimensions, the box-model diagram, Appearance and box-sizing SHALL be shown only when the selected element generates its own rendered CSS box, determined by at least one client rectangle and display other than contents. A zero-width or zero-height box SHALL remain eligible. display:none elements SHALL NOT be eligible.
+- Applicable Appearance properties SHALL remain visible for transparent backgrounds and zero border radii. Applicable box-model properties SHALL retain zero margin, padding and border values.
+- Layout SHALL always expose display and position, including for display:contents and display:none elements.
+- flex-direction SHALL appear only for flex and inline-flex containers that generate a box.
+- justify-content and align-items SHALL appear for flex, inline-flex, grid and inline-grid containers that generate a box. They SHALL be omitted for other layout types in the currently supported property inventory.
+- gap SHALL appear for flex, inline-flex, grid and inline-grid containers that generate a box, including values of 0 and normal. A computed gap on another layout type SHALL NOT enable this row. Multi-column gap inspection is outside the current inventory.
+- Typography SHALL follow the own-rendered-text requirement above. Descendant content SHALL NOT make an otherwise inapplicable section eligible.
+
+#### Scenario: Ordinary card
+- **WHEN** an ordinary block card containing child text elements is selected
+- **THEN** dimensions, box model, Appearance and basic Layout properties appear
+- **AND** Typography, gap, flex-direction, justify-content and align-items are omitted
+
+#### Scenario: Flex and grid containers
+- **WHEN** a flex container with zero gap is selected
+- **THEN** gap, flex-direction, justify-content and align-items appear
+- **WHEN** its display changes to grid
+- **THEN** gap, justify-content and align-items remain and flex-direction disappears
+
+#### Scenario: Wrapper without a box
+- **WHEN** a display:contents wrapper is selected
+- **THEN** dimensions, box model, Appearance and box-sizing are omitted
+- **AND** Layout still shows display and position
+- **AND** descendant boxes do not enable the wrapper's box-specific sections
+
+### Requirement: Optional all-properties view
+The inspector SHALL default to the applicable-properties view. For a selected element, a keyboard-accessible Show all properties toggle SHALL reveal the complete supported Appearance, Layout and Typography property inventory, including normally filtered rows. Its pressed state SHALL be exposed accessibly and its active label SHALL offer Show applicable properties. The all-properties view SHALL explain that some computed properties may not affect the selected element. Dimensions and the box-model diagram SHALL still require actual element geometry; the toggle SHALL NOT fabricate a box for display:none or display:contents.
+
+The view preference SHALL persist across selections within the current inspector session, SHALL apply to selections in connected frames, and SHALL reset when the inspector is reopened. Switching the view SHALL NOT modify website styles or selection. Returning to applicable properties SHALL restore current applicability rules.
+
+#### Scenario: Explicit typography on a card
+- **WHEN** a card has no own text but an accessible matching declaration sets its font or color
+- **THEN** Typography appears in the applicable-properties view
+- **AND** an otherwise equivalent wrapper with only inherited typography remains without this section
+
+#### Scenario: Inspect normally hidden properties
+- **WHEN** Show all properties is enabled for an ordinary block element
+- **THEN** Typography and flex/grid rows are available with computed values
+- **AND** the panel explains that some values may not affect the element
+- **WHEN** Show applicable properties is selected
+- **THEN** the normal applicability rules are restored
+
+### Requirement: Optional variable-chain disclosure
+A value with resolvable alias steps SHALL have a separate chain-icon button next to the computed-value eye, using the same size and visual style. The chain SHALL be collapsed by default. Activating this button SHALL reveal the original reference followed by intermediate expressions through terminal variable references, joined by right arrows with a nonbreaking space (U+00A0) after each arrow. The chain SHALL NOT replace the main label or its original-variable copy behavior. Literal computed values SHALL remain under the eye rather than being appended to the chain.
+
+Chain and computed-value disclosures SHALL be independent. Each control SHALL expose its own accessible name, expanded state and associated content. Chain disclosure SHALL persist across live refreshes and unit updates, reset on a new selection, and work for connected-frame snapshots and grouped typography. Values with no resolvable alias steps, including unavailable or cyclic chains, SHALL NOT show a chain button.
+
+#### Scenario: Inspect an alias calculation
+- **WHEN** padding uses var(--control), control uses calc(var(--alias) * var(--scale)), and alias uses var(--base)
+- **THEN** the main label remains control and copies --control
+- **AND** the chain control reveals control → calc(alias * scale) → calc(base * scale)
+- **AND** the independent eye reveals the browser-computed padding value

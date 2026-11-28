@@ -123,17 +123,64 @@
         }
         if (!value) continue;
         const important = Number(c.style.getPropertyPriority(declaration) === "important" || rawDeclaration(c.style,declaration,c.raw)?.important === true);
-        const next = {...c, value, declaration, important};
+        const next = {...c, value, declaration, important, element:el};
         const cmp = !winner ? 1 : important-winner.important || c.inline-winner.inline || compare(c.layer, winner.layer)*(important ? -1 : 1) || compare(c.score, winner.score) || c.order-winner.order;
         if (cmp >= 0) winner = next;
       }
       if (!winner || /^(inherit|unset)$/.test(winner.value)) {
-        if (el.parentElement && (inherited.has(property) || winner?.value === "inherit")) return read(el.parentElement, property);
+        if (el.parentElement && (inherited.has(property) || property.startsWith("--") || winner?.value === "inherit")) return read(el.parentElement, property);
       }
       if (winner?.score.includes(Infinity) || /^(revert|revert-layer|initial|unset|inherit)$/.test(winner?.value)) return null;
       return winner || null;
     }
-    return {read, get incomplete() {return incomplete;}};
+    function resolve(el, expression, trace = false) {
+      let budget=100;
+      function expand(context, text, visiting, remaining) {
+        let result="";
+        for(let i=0;i<text.length;) {
+          if(text[i]==='"' || text[i]==="'") {
+            const start=i,quote=text[i++];
+            while(i<text.length){if(text[i]==="\\"){i+=2;continue;}if(text[i++]===quote)break;}
+            result+=text.slice(start,i);continue;
+          }
+          const match=text.slice(i).match(/^var\(\s*(--[\w-]+)\s*(?=[,)])/);
+          if(!match){result+=text[i++];continue;}
+          let end=i+4,depth=1,quote="";
+          for(;end<text.length && depth;end++) {
+            const c=text[end];
+            if(c==="\\"){end++;continue;}
+            if(quote){if(c===quote)quote="";continue;}
+            if(c==='"' || c==="'"){quote=c;continue;}
+            if(c==='(')depth++;if(c===')')depth--;
+          }
+          if(depth)return null;
+          const original=text.slice(i,end),name=match[1];
+          if(visiting.has(name) || --budget<0)return null;
+          const source=read(context,name);
+          let replacement=original;
+          if(remaining>0 && source && /var\(/.test(source.value)) {
+            const next=new Set(visiting);next.add(name);
+            replacement=expand(source.element,source.value,next,remaining-1);
+            if(replacement===null)return null;
+          }
+          result+=replacement;i=end;
+        }
+        return result;
+      }
+      const chain=[expression];
+      for(let depth=1;depth<=100;depth++) {
+        budget=100;
+        const next=expand(el,expression,new Set(),depth);
+        if(next===null)return trace?[expression]:expression;
+        if(next===chain.at(-1))break;
+        chain.push(next);
+      }
+      return trace?chain:chain.at(-1);
+    }
+    function hasOwn(el, properties) {
+      return declarations(el).some(candidate=>properties.some(property=>candidate.style.getPropertyValue(property) || rawDeclaration(candidate.style,property,candidate.raw)?.value));
+    }
+    return {read, resolve, hasOwn, get incomplete() {return incomplete;}};
   }
   function tokenLabel(expression) {
     let result="", cursor=0;
@@ -183,15 +230,32 @@
       }
       if(emitted.has(key))continue;
       emitted.add(key);
-      result.push(["font",{token:value.token,descriptions:group.map(([property,v])=>({property,actual:v.actual}))}]);
+      result.push(["font",{token:value.token,tokenChain:value.tokenChain,descriptions:group.map(([property,v])=>({property,actual:v.actual}))}]);
     }
     return result;
+  }
+  function borderComponent(expression,part,supports,resolve){
+    const tokens=[];let token='',depth=0,quote='',escaped=false;
+    for(const c of expression.trim()){
+      if(escaped){token+=c;escaped=false;continue;}if(c==='\\'){token+=c;escaped=true;continue;}
+      if(quote){token+=c;if(c===quote)quote='';continue;}if(c==='"'||c==="'"){quote=c;token+=c;continue;}
+      if(c==='(')depth++;if(c===')')depth--;
+      if(/\s/.test(c)&&depth===0){if(token)tokens.push(token);token='';}else token+=c;
+    }
+    if(token)tokens.push(token);
+    const property='border-'+part;
+    if(tokens.length===1){const resolved=resolve(expression);return supports(property,expression)&&(!resolved||supports(property,resolved))?expression:null;}
+    const style=tokens.find(t=>!t.includes('var(')&&supports('border-style',t));
+    const width=tokens.find(t=>t!==style&&!t.includes('var(')&&supports('border-width',t));
+    const candidates=tokens.filter(t=>t!==style&&t!==width);
+    if(part==='style')return style||candidates.find(t=>{const v=resolve(t);return v&&supports(property,v);})||null;
+    if(part==='width')return width||candidates.find(t=>{const v=resolve(t);return v&&supports(property,v);})||null;
+    return candidates.find(t=>{const v=resolve(t);return supports('color',t)&&(!v||supports('color',v));})||null;
   }
   function variableCopyText(expression) {
     const primary=expression.trim().match(/^var\(\s*(--[\w-]+)/);
     if(primary)return primary[1];
-    const names=[...new Set([...expression.matchAll(/var\(\s*(--[\w-]+)/g)].map(match=>match[1]))];
-    return names.length===1 ? names[0] : expression;
+    return expression;
   }
-  globalThis.designInspectCSS = {format, sourceReader, specificity, tokenLabel, displayValue, groupTypography, variableCopyText};
+  globalThis.designInspectCSS = {format, sourceReader, specificity, tokenLabel, displayValue, groupTypography, variableCopyText, borderComponent};
 })();

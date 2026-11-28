@@ -1,9 +1,12 @@
+importScripts('design-tokens.js');
+importScripts('review.js');
+const reviewStore=designInspectReview.createStore(chrome);
 const channel = "design-inspect";
-const files = ["geometry.js", "css-values.js", "layout-icons.js", "spacing.js", "box-model.js", "inspect.js"];
+const files = ["design-tokens.js", "figma-icons.js", "geometry.js", "css-values.js", "layout-icons.js", "spacing.js", "box-model.js", "review.js", "review-overrides.js", "review-panel.js", "inspect.js"];
 const send = (tabId, frameId, message) => chrome.tabs.sendMessage(tabId, {channel, ...message}, {frameId}).catch(() => null);
 const state = tabId => send(tabId, 0, {type:"get-state"});
 const frames = async tabId => (await chrome.webNavigation.getAllFrames({tabId})) || [];
-let interFont;
+const fontCache=new Map();
 let captureBusy=false, lastCapture=0;
 const pixelCache=new Map();
 const hoverPins=new Map();
@@ -99,6 +102,40 @@ async function handle(message, sender) {
   const tabId = sender.tab?.id;
   if (tabId === undefined || !Number.isInteger(sender.frameId)) return;
   const frameId = sender.frameId;
+  if(message.type==='review-open-spacing'){
+    const current=await state(tabId);
+    if(current?.activeFrameId!==frameId||typeof message.anchorId!=='string'||message.anchorId.length>100||!(/^(?:margin|padding)-(?:top|right|bottom|left)$|^(?:row|column)-gap$/).test(message.property))return;
+    return send(tabId,0,{type:'review-open-spacing',frameId,property:message.property,anchorId:message.anchorId});
+  }
+  if(message.type==='review-assets'&&frameId===0){return {icons:Object.fromEntries(await Promise.all(['copyAll','record','pencil','complete','copy','more','folder','delete','edit'].map(async name=>[name,await (await fetch(chrome.runtime.getURL('assets/fix-notes/'+name+'.svg'))).text()])))};}
+  if(message.type==='review-operation'&&frameId===0){
+    if(!(await state(tabId)))throw Error('Inspector is closed.');
+    if(!['get','stop','new','delete','export','export-all'].includes(message.operation))throw Error('Unsupported review operation.');
+    const result=await reviewStore.run(tabId,message.operation,message.payload);
+    if(message.operation==='new'||result.deletedActive)await broadcast(tabId,{type:'review-clear'});
+    return result;
+  }
+  if(message.type==='review-target'&&frameId===0){
+    const current=await state(tabId);
+    if(!current||current.activeFrameId!==message.targetFrameId)throw Error('Select the element again.');
+    return await send(tabId,message.targetFrameId,{type:'review-edit',command:message.command});
+  }
+  if(message.type==='review-change'){
+    const current=await state(tabId);
+    if(!current||current.activeFrameId!==frameId)throw Error('Selection is no longer active.');
+    const event=message.event;
+    if(!event||!['parameter','comment'].includes(event.kind)||!event.context||!event.identity)throw Error('Invalid review change.');
+    if(event.kind==='parameter'&&!/^@[^\s<>/=]+$/.test(event.property)&&!/^(font|border|width|height|display|position|box-sizing|flex-direction|justify-content|align-items|gap|row-gap|column-gap|background-color|border-[a-z-]+|font-[a-z-]+|line-height|letter-spacing|color|margin-(top|right|bottom|left)|padding-(top|right|bottom|left))$/.test(event.property))throw Error('Unsupported property: '+event.property);
+    if(event.kind==='comment'&&(typeof event.comment!=='string'||event.comment.length>20000))throw Error('Comment is too long.');
+    if(event.context.url!==current.reviewContext.url||event.context.width!==current.reviewContext.width||event.context.height!==current.reviewContext.height)throw Error('Page or viewport changed. Select the element again.');
+    if(frameId!==0)event.context.frameUrl=sender.url;else delete event.context.frameUrl;
+    const result=await reviewStore.run(tabId,'change',event);
+    if(result.started)await broadcast(tabId,{type:'review-reset-preview'});
+    await send(tabId,0,{type:'review-updated',result});return result;
+  }
+  if(message.type==='review-compare'){
+    await broadcast(tabId,{type:'review-view',after:message.after!==false});return {ok:true};
+  }
   if(message.type==='toggle-pinned-inspect'&&frameId===0) {
     const current=await state(tabId);
     if(!current)return {ok:false};
@@ -139,8 +176,9 @@ async function handle(message, sender) {
     const rgba=[...cached.context.getImageData(Math.min(canvas.width-1,Math.floor(x*canvas.width/width)),Math.min(canvas.height-1,Math.floor(y*canvas.height/height)),1,1).data];
     return {rgba};
   } else if(message.type==='font' && frameId===0) {
-    interFont ||= fetch(chrome.runtime.getURL('fonts/InterVariable.woff2')).then(response=>{if(!response.ok)throw Error('Inter font unavailable');return response.arrayBuffer();}).then(buffer=>Array.from(new Uint8Array(buffer)));
-    return {bytes:await interFont};
+    const file=(globalThis.designInspectTokens.fontAssets.find(font=>font.key===message.font) || globalThis.designInspectTokens.fontAssets[0]).file;
+    if(!fontCache.has(file))fontCache.set(file,fetch(chrome.runtime.getURL('fonts/'+file)).then(response=>{if(!response.ok)throw Error('Inspector font unavailable');return response.arrayBuffer();}).then(buffer=>Array.from(new Uint8Array(buffer))).catch(error=>{fontCache.delete(file);throw error;}));
+    return {bytes:await fontCache.get(file)};
   } else if(message.type==='pick' && frameId===0) {
     const current=await state(tabId);
     if(current?.mode==='inspect' && current.activeFrameId===message.frameId && Number.isInteger(message.nodeId))await send(tabId,current.activeFrameId,{type:'pick',nodeId:message.nodeId});
@@ -191,4 +229,4 @@ chrome.webNavigation.onDOMContentLoaded.addListener(async ({tabId, frameId}) => 
 });
 
 chrome.debugger.onDetach.addListener(source=>{if(source.tabId!==undefined&&hoverPins.has(source.tabId)){hoverPins.delete(source.tabId);send(source.tabId,0,{type:'hover-pin-lost'});}});
-chrome.tabs.onRemoved.addListener(tabId=>{pixelCache.delete(tabId);releaseHover(tabId);});
+chrome.tabs.onRemoved.addListener(tabId=>{pixelCache.delete(tabId);releaseHover(tabId);reviewStore.run(tabId,'close').catch(error=>console.warn('Review close:',error));});

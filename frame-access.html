@@ -3,11 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Доступ к iframe — Design Inspect</title>
+<script src="design-tokens.js"></script>
 <style>
-  @font-face {font-family:"Design Inspect Inter";src:url("fonts/InterVariable.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap;}
-  body {color-scheme:dark;background:#202127;color:#f4f4f6;font:13px/1.2 "Design Inspect Inter",Inter,system-ui,sans-serif;margin:28px;}
-  h1 {font-size:13px;} li {overflow-wrap:anywhere;font-family:ui-monospace,monospace;} button {background:#7960ee;color:white;border:0;border-radius:8px;padding:10px 16px;font:inherit;cursor:pointer;}
-  button:disabled {opacity:.5;cursor:default;} #status {color:#b9aaff;}
+  body {background:var(--di-color-surface-panel);color:var(--di-color-text-primary);font:var(--di-font-ui);margin:var(--di-size-line-section-heading);}
+  h1 {font-size:var(--di-font-size-body);} li {overflow-wrap:anywhere;font-family:var(--di-font-family-code);}
+  button {background:var(--di-color-action);color:var(--di-color-text-on-accent);border:0;border-radius:var(--di-radius-popover);padding:var(--di-space-tooltip-inset) var(--di-space-viewport);font:inherit;cursor:pointer;}
+  button:hover {background:var(--di-color-action-hover);} button:disabled {opacity:var(--di-opacity-disabled);cursor:default;}
+  #status {color:var(--di-color-action);}
 </style>
 <h1>Инспект внутри iframe</h1>
 <p>Разрешите расширению доступ к доменам встроенных страниц. Это позволит выбирать элементы внутри них.</p>

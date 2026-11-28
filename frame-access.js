@@ -1,3 +1,10 @@
+if(globalThis.designInspectTokens && document.documentElement){
+  const tokens=globalThis.designInspectTokens,system=globalThis.matchMedia?.('(prefers-color-scheme: dark)');
+  const updateTheme=()=>tokens.applyTo(document.documentElement,system?.matches?'dark':'light');updateTheme();system?.addEventListener('change',updateTheme);
+  for(const font of tokens.fontAssets){
+    new FontFace(font.family,`url("fonts/${font.file}")`,{weight:font.weight}).load().then(face=>document.fonts.add(face)).catch(()=>{});
+  }
+}
 const tabId = Number(new URLSearchParams(location.search).get("tab"));
 const button = document.querySelector("#grant"), status = document.querySelector("#status");
 let origins = [];

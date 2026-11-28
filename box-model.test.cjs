@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict');
+require('./design-tokens.js');
 require('./box-model.js');
 const {splitValue,resolveRadii,insetRadii,radiusCSS}=globalThis.designInspectBox;
 assert.deepEqual(splitValue('24px'),{number:'24',unit:'px'});
@@ -15,3 +16,14 @@ assert.deepEqual(inside.topRight,{x:2,y:2});
 assert.deepEqual(inside.bottomRight,{x:2,y:2});
 assert.equal(radiusCSS(inside),'29px 2px 2px 2px / 35px 2px 2px 2px');
 console.log('Box-model radius checks passed');
+
+const capped=globalThis.designInspectBox.capRadii({...circles,topLeft:{...circles.topLeft,label:'50%'}});
+assert.deepEqual(capped.topLeft,{x:24,y:24,label:'50%'});
+assert.deepEqual(circles.topLeft,{x:100,y:50},'Visual cap does not mutate the actual radius');
+assert.deepEqual(globalThis.designInspectBox.capRadii(radii).bottomLeft,{x:12,y:8},'Preserve smaller elliptical radii');
+
+const {sideExpression}=globalThis.designInspectBox;
+assert.equal(sideExpression('0 var(--space)','top'),'0');
+assert.equal(sideExpression('0 var(--space)','left'),'var(--space)');
+assert.equal(sideExpression('var(--zero)','top'),'var(--zero)');
+assert.equal(sideExpression('calc(var(--space) * 2) 0','bottom'),'calc(var(--space) * 2)');

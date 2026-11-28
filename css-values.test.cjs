@@ -3,7 +3,7 @@ require('./css-values.js');
 const {format, specificity, sourceReader, tokenLabel, displayValue, groupTypography, variableCopyText} = globalThis.designInspectCSS;
 assert.equal(variableCopyText('var(--tui-font-text-m)'),'--tui-font-text-m');
 assert.equal(variableCopyText('var(--space, var(--fallback))'),'--space');
-assert.equal(variableCopyText('calc(var(--space) * 2)'),'--space');
+assert.equal(variableCopyText('calc(var(--space) * 2)'),'calc(var(--space) * 2)');
 assert.equal(variableCopyText('calc(var(--space) + var(--other))'),'calc(var(--space) + var(--other))');
 assert.equal(tokenLabel('var(--tui-font-text-m)'), 'tui-font-text-m');
 assert.equal(tokenLabel('calc(var(--space) * 2)'), 'calc(space * 2)');

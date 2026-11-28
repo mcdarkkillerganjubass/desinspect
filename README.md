@@ -4,6 +4,8 @@ A local Chrome extension for designers checking a live website. Select DOM eleme
 
 The extension runs directly from this folder. No build step, dependencies, server, or Chrome Web Store publication is required.
 
+[Design tokens and theme palette](DESIGN_TOKENS.md) document the shared semantic styles for Light, Dark and System.
+
 The [OpenSpec baseline](openspec/README.md) documents the app's current capabilities as requirements and scenarios. Validate it with `openspec validate --specs --strict --no-interactive`.
 
 ## Install locally
@@ -29,6 +31,35 @@ Chrome runs the extension directly from the selected folder. It is not installed
 Click the icon again, or the panel's close button, to remove the inspector from the page and its connected frames.
 
 After changing the extension files, reload the extension at `chrome://extensions`, refresh the website, and click the icon again. See Chrome's [unpacked extension instructions](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked).
+
+### Test a local feature branch
+
+Chrome loads files from the selected folder, not from a Git branch name. With this checkout on `fix-spec-tool`, load this repository folder once, then use **Reload** on the extension card after code changes. Refresh the website and reopen the inspector. No build or server is needed for ordinary website testing. Reloading the extension clears the browser-session recording binding; export an in-progress review before updating the extension.
+
+## Record interface corrections
+
+Click a CSS value or variable name to edit it; clicking does not copy variables. Compound values open an Edit menu. Font offers Variable (an available font custom property) and individual typography properties; Border offers the whole property and its subproperties. Choosing a font variable preserves separate typography overrides. The editor opens as a floating overlay. Properties with a finite keyword grammar (box sizing, position, flex direction, alignment, and border style) use a select with browser-supported options and compatible site variables. Variable-backed values open with their source expression, including inherited grouped font variables. Save explicitly with **Save** or Enter, delete with **Delete**, or dismiss with Escape. A blue 16px pencil to the left of the value marks an override. Click the value to edit again; delete the override inside the editor. Element attributes are always shown before the final comment block, and their values are editable too. Matching site custom properties appear in a separate dropdown anchored to the input, using the table’s color-preview component and aligned text for suggestions with or without previews. Choosing a suggestion fills var(--name) without saving.
+
+Repeated adjustments keep only the original and latest target: `16px → 20px → 32px → 24px` exports as `16px → 24px`. Returning to the captured original value removes the difference. Comments are independent; use **Add** for a new element comment, **Update** to replace an existing comment in the active note, or **Delete** to remove it without resetting CSS.
+
+The **Fix notes** section stays at the bottom of the panel, capped at 30% of its height; only its list scrolls. Cards show a recording dot or completed folder, last edit time, date without year, and one combined edit count. **Copy** copies Markdown with a “Fixes copied” tooltip; **… → Download** downloads a snapshot without stopping recording. **Copy all** copies notes from latest to earliest. The Markdown starts with “Fix Notes”, groups corrections by page/context without printing window or frame dimensions, and includes element lookup evidence, original token/computed values, final targets under “Must be” as entered (preserving `var(...)`, fallbacks, and expressions), and comments. Computed target values, creation timestamps, and recording status are omitted from the report. Recipient implementation guidance appears at the end. A developer or coding LLM chooses how to implement the demonstrated result using the source project's components, tokens, and responsive rules.
+
+**Before / After** compares currently live overrides in the tab's connected documents. Before leaves the report intact; scrolling and hovering preserve Before. Selecting an element or opening a CSS editor returns to After automatically. Saved changes from previous page loads are not reconstructed by comparison.
+
+One tab owns one recording; URL changes and reloads keep the same document. Different pages and viewport sizes remain separate contexts. Navigation may require clicking the extension icon again under Chrome's existing site-access rules. Closing the inspector removes live overrides but retains the recording. Reloading a page or replacing an element retains saved corrections without automatically reapplying them. When a website replaces an override itself, the panel reports the lost live preview.
+
+**Complete recording** completes the note. The next edit automatically starts another note. **Start new**, available while recording, completes the current note, clears its previews, and immediately creates an empty active note. The active card offers **Show before / Show after**. All cards offer **… → Download / Delete**. Closing the tab completes its note; restoring a closed tab or restarting Chrome does not resume an old note. The empty state explains that editing an object starts recording.
+
+Review documents are stored locally using extension storage; they are not uploaded. Worker suspension does not lose committed records. There is no automatic eviction: storage failures show **Not saved**, keep the draft available for retry, and offer **Export unsaved changes** when content is recoverable. Uninstalling the extension removes its local data. The report is a standalone Markdown download, not a file continuously rewritten on disk.
+
+Quick manual check:
+
+1. Edit a selected element's padding several times and verify the card still counts one changed parameter.
+2. Add a comment, switch Before/After, then select another element to verify automatic return to After.
+3. Reset one parameter and export; verify the reset parameter is absent while the comment remains.
+4. Navigate in the same tab, reopen the inspector as needed, and add another correction. Export should contain both pages.
+5. Reload the page: the card retains saved counts, while the website has no restored historical overrides.
+6. Stop, start a new document, and verify that the old document remains available for export.
 
 ## Use and Inspect
 
@@ -75,7 +106,7 @@ Variable-backed side values have dotted underlines and full-value tooltips. Belo
 
 Content follows this order: compact spacing diagram, dimensions, appearance without a heading, Layout, then Typography. A nonzero gap appears first in Layout.
 
-All properties are read-only. The extension does not edit the website's styles.
+CSS-backed parameters support explicit local editing and reset through review recording. Passive inspection does not edit the website; screen geometry and derived measurements remain read-only.
 
 The main width/height values are the bounding rectangle including transforms. The descriptions below with a **css** badge retain their CSS/source meaning. Hover or focus the badge for a **CSS size** hint above it. For example, an element with CSS width 100px and scale(2) shows **200px** with **100px [css]** underneath. The Content label in the box model has a help hint explaining the content area without padding, border or margin; it does not measure visible text ink.
 
@@ -102,9 +133,9 @@ CSS wrappers (`var(...)` and the leading `--`) are hidden; meaningful prefixes s
 
 Colors, including literal values, have a 16×16px square preview with 4px corner radii in a separate reserved column. All value text starts on the same vertical line, whether or not the row has a preview; labels, previews and wrapped names align with the first line. Revealed descriptions align with the name. Empty values and fully transparent colors display **—**, while zero dimensions and partially transparent colors remain explicit. A transparent color is still a CSS value; the dash means no visible color contribution, not that the declaration or a possible background image is missing.
 
-Click a variable name to copy its full CSS name, including `--`; successful writes show **Copied** just above the clicked name (below when space above is insufficient). A primary variable with fallbacks copies the primary name. Calculations with several distinct variables copy the complete original expression. The Clipboard API is used when available, with a legacy copy fallback; failure reports **Could not copy**. An open eye offers to reveal descriptions; a crossed eye offers to hide them. Disclosure state survives value/unit updates and resets with a new selection.
+Clicking a variable name starts editing, without writing to the clipboard. The eye and chain controls independently reveal computed values and variable aliases.
 
-Layout values are text-only. Hover a property name for a short native explanation. Functional variable-copy and disclosure controls remain available.
+Layout values are text-only. Hover a property name for a short native explanation. Variable values are editable; disclosure controls remain available.
 
 Typography components from one shared `font` variable appear in one row with individual computed descriptions. Separate longhand overrides remain separate and have a two-arrow replacement marker beside the property, without an override-source tooltip. For example, `font: var(--font-ui)` and `font-weight: var(--weight-strong)` show a grouped font-ui row plus a marked font-weight row. Original inline shorthand text is read when CSSOM loses shorthand serialization after a partial override; stylesheet source recovery remains best-effort.
 
@@ -198,6 +229,7 @@ node layout-icons.test.cjs
 node spacing.test.cjs
 node box-model.test.cjs
 node css-values.test.cjs
+node review.test.cjs
 node tests/frame-access.cjs
 ```
 
@@ -210,6 +242,8 @@ For the unpacked-extension integration checks, use Node.js 22+ and a Chrome/Chro
 ```sh
 CHROME_BIN="/absolute/path/to/chrome" node tests/extension.cjs
 ```
+
+Run `REVIEW_TEST=1 node tests/extension.cjs` for the recording UI, original-to-final differences, comments, reset, comparison, viewport separation, SPA URLs, permitted frames, Markdown download, reload, Stop/New, and tab closure. `node review.test.cjs` covers the model/export and mocked storage, worker restart, independent tabs, browser-session loss, concurrency, and write failures. These checks do not claim full browser-cascade or arbitrary application rerender support.
 
 The runner creates two local HTTP servers, a temporary extension copy, and a temporary browser profile. Only the test manifest pre-grants localhost access; the production manifest is unchanged. Checks cover bundled Inter under restrictive page font policies, fixed headers, horizontal resizing, DOM attributes and hierarchy selection, persistent nonoverlapping measurement badges, same-origin and cross-origin frames, one shared panel, the missing-domain permission list, CSS variables, frame-relative rem conversion, the box model, routed shortcuts and Alt measurements, mode synchronization, dropdown/focus preservation, dynamic frame attachment/removal, and cleanup. Existing browser profiles are not used.
 
@@ -227,3 +261,19 @@ Set `SCREENSHOT_PATH=/absolute/path/panel.png` when running the integration chec
 6. Select an element in an iframe and verify the shared panel, units, and shortcuts.
 7. Move the panel and confirm that the website's viewport width does not change.
 8. Close the inspector and confirm that normal clicks and keyboard interactions resume.
+
+Run `TOKEN_TEST=1 node tests/extension.cjs` for terminal variable chains, calculations, inherited definition context, cycles and computed panel values.
+
+Typography appears for the selected element’s own rendered, non-whitespace DOM text or an explicit supported typography declaration on that element. Descendant text does not enable Typography on a card or wrapper. Empty/image avatars omit it; direct text initials enable it. Hidden or zero-opacity text is excluded. Run `TYPOGRAPHY_TEST=1 node tests/extension.cjs` for these rules and live content updates.
+
+Sections follow applicability: dimensions, box model and Appearance require the selected element’s own rendered CSS box; display and position remain available without one. Flex direction is shown for flex containers; alignment and gap for flex/grid containers, including zero gap. Transparent backgrounds and zero box-model values remain inspectable. Run `APPLICABILITY_TEST=1 node tests/extension.cjs` for these rules and live display changes.
+
+Use **Show all properties** to reveal filtered Appearance, Layout and Typography rows for the current selection, including connected frames. **Show applicable properties** restores filtering. This preference lasts for the inspector session. Values may not affect the selected element; missing element geometry is never fabricated.
+
+Border rows show width, style, and color on separate lines with the same typography and no gap; each value is directly editable. Explicit border overrides remain inspectable even when not painted. Setting a nonzero border width supplies solid only for sides currently using none/hidden; visible dashed/dotted/etc. styles are preserved. Automatic style changes are recorded and removed with their owning width reset, unless the style is subsequently edited explicitly.
+
+Element attribute edits appear only in the final Element attributes section. CSS edits made in the box model that lack a normal table row appear directly below the diagram as standard parameter/value rows, using the shared columns, value editor, and pencil indicator.
+
+Run `NOTES_TEST=1 node tests/extension.cjs` for the Figma notes states, clipboard feedback, lifecycle actions, fixed header, and responsive 30% height cap.
+
+Click the numeric margin, padding, or gap badge on the selected element’s page overlay to edit that side or gap axis using the same value editor. These edits are previewed and recorded in Fix notes. `SPACING_EDIT_TEST=1 node tests/extension.cjs` verifies actual mouse clicks and recorded targets.

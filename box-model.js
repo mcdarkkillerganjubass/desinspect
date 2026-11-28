@@ -1,8 +1,18 @@
 (() => {
+  const tokens=globalThis.designInspectTokens;
   const corners=['topLeft','topRight','bottomRight','bottomLeft'];
   function splitValue(value) {
     const match=String(value).trim().match(/^(-?(?:\d*\.)?\d+)([a-z%]+)$/i);
     return match ? {number:match[1],unit:match[2]} : {number:value,unit:''};
+  }
+  function sideExpression(expression,side) {
+    const tokens=[];let depth=0,start=0;
+    for(let i=0;i<=expression.length;i++){
+      const c=expression[i];if(c==='(')depth++;else if(c===')')depth--;
+      if(i===expression.length || (!depth && /\s/.test(c))){const token=expression.slice(start,i).trim();if(token)tokens.push(token);start=i+1;}
+    }
+    if(tokens.length<1 || tokens.length>4)return expression;
+    const [a,b=a,c=a,d=b]=tokens;return {top:a,right:b,bottom:c,left:d}[side] || expression;
   }
   function resolveRadii(values,width,height) {
     const length=(text,basis)=> {
@@ -27,8 +37,9 @@
       bottomRight:[outer.right-inner.right,outer.bottom-inner.bottom],
       bottomLeft:[inner.left-outer.left,outer.bottom-inner.bottom],
     };
-    return Object.fromEntries(corners.map(corner=>[corner,{x:Math.max(2,radii[corner].x-offsets[corner][0]),y:Math.max(2,radii[corner].y-offsets[corner][1])}]));
+    return Object.fromEntries(corners.map(corner=>[corner,{x:Math.max(tokens.number('radius-box-inner-min'),radii[corner].x-offsets[corner][0]),y:Math.max(tokens.number('radius-box-inner-min'),radii[corner].y-offsets[corner][1])}]));
   }
+  const capRadii=(radii,max=tokens.number('radius-box-max'))=>Object.fromEntries(corners.map(c=>[c,{...radii[c],x:Math.min(max,Math.max(0,radii[c].x)),y:Math.min(max,Math.max(0,radii[c].y))}]));
   const radiusCSS=radii=>corners.map(c=>`${radii[c].x}px`).join(' ')+' / '+corners.map(c=>`${radii[c].y}px`).join(' ');
-  globalThis.designInspectBox={splitValue,resolveRadii,insetRadii,radiusCSS};
+  globalThis.designInspectBox={splitValue,resolveRadii,insetRadii,radiusCSS,capRadii,sideExpression};
 })();
