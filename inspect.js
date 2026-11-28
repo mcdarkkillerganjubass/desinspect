@@ -47,12 +47,11 @@
       .empty { margin:0 0 var(--di-space-section); color:var(--di-color-text-secondary); }
       .element-details, .element-tree { margin:0 0 var(--di-space-section); max-height:min(var(--di-size-selection-max-height),calc(40vh - var(--di-size-settings-section-height))); overflow:auto; padding:var(--di-space-tooltip-inset); border:var(--di-border-hairline-width) solid var(--di-color-border-default); border-radius:var(--di-radius-field); background:var(--di-color-surface-section); }
       .dom-markup { display:flex; flex-direction:column; gap:var(--di-space-group); color:var(--di-color-text-primary); font:var(--di-font-code-markup); }
-      .dom-tag { overflow-wrap:anywhere; }
       .attribute-list { margin:0; }
-      .tree-item { display:flex; align-items:center; gap:var(--di-space-group); width:100%; padding:var(--di-space-control-horizontal); text-align:start; background:transparent; }
-      .tree-item[aria-current=true] { background:var(--di-color-surface-control-hover); }
+      .tree-item { display:flex; align-items:center; gap:var(--di-space-group); width:100%; padding:var(--di-space-related) var(--di-space-group); text-align:start; background:transparent; font:var(--di-font-body); }
+      .tree-item:hover,.tree-item[aria-current=true] { background:var(--di-color-surface-control-hover); }
       .tree-relation { flex:none; width:var(--di-size-tree-relation-width); font:var(--di-font-ui-caption); color:var(--di-color-text-secondary); }
-      .tree-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:var(--di-font-code-compact); }
+      .tree-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:inherit; }
       .value-stack { display:grid; grid-template-columns:minmax(0,1fr); row-gap:var(--di-space-label-offset); }
       .color-preview { width:var(--di-size-icon); height:var(--di-size-icon); border-radius:var(--di-radius-section); grid-column:2; grid-row:1; align-self:start; box-shadow:0 0 0 var(--di-space-pixel-alignment) var(--di-color-border-default); background-image:conic-gradient(var(--di-color-text-secondary) 25%,var(--di-color-border-default) 0 50%,var(--di-color-text-secondary) 0 75%,var(--di-color-border-default) 0); background-size:var(--di-space-group) var(--di-space-group); }
       .color-preview::after { content:""; display:block; width:100%; height:100%; border-radius:inherit; background:var(--preview-color); }
@@ -124,16 +123,16 @@
       .selection-header { padding:0 var(--di-space-section); border-bottom:0; }
       .identity-row { margin-bottom:var(--di-space-related); }
       .element-details,.element-tree { background:var(--di-color-surface-section); border:0; margin:0 calc(-1 * var(--di-space-section)) var(--di-space-related); padding:var(--di-space-related) var(--di-space-section); border-radius:var(--di-radius-popover) var(--di-radius-popover) var(--di-radius-box-layer) var(--di-radius-box-layer); }
+      .element-tree { margin-bottom:0; padding:var(--di-space-related); }
 
       /* Exact geometry from Figma 2:952; SVGs retain their original viewBoxes. */
       .panel { border-color:var(--di-color-surface-panel); }
       .figma-icon { display:block; flex:none; pointer-events:none; }
-      .selection-header { padding:var(--di-space-related) var(--di-space-section) var(--di-space-related); }
+      .selection-header { padding:var(--di-space-section) var(--di-space-section) var(--di-space-related); }
       .identity-row { align-items:center; gap:var(--di-space-inline-tight); margin:0; }
-      .identity-label { display:flex; align-items:baseline; gap:var(--di-space-inline-tight); flex:1; min-width:0; margin-right:var(--di-space-inline-tight); overflow:hidden; }
+      .identity-label { display:flex; align-items:baseline; gap:var(--di-space-inline-tight); flex:1; min-width:0; overflow:hidden; }
       .identity-label .name { flex:0 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
       .name { padding:0; font:var(--di-font-selection-name); }
-      .identity-label .dom-tag { display:block; flex:0 2 auto; min-width:0; max-width:var(--di-size-dom-tag-limit); color:var(--di-color-text-secondary); font:var(--di-font-dom-tag); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .element-info,.element-tree-toggle { background:transparent; color:var(--di-color-text-secondary); border-radius:var(--di-radius-control-round); }
       .element-info:hover,.element-tree-toggle:hover { background:transparent; color:var(--di-color-text-hover); }
       .element-info[aria-expanded=true],.element-tree-toggle[aria-expanded=true] { color:var(--di-color-action); }
@@ -725,8 +724,7 @@
     row.className='identity-row';label.className='name';label.textContent=title;label.title=title;
     tree.className='element-tree-toggle icon-button';tree.title='Element hierarchy';tree.setAttribute('aria-label','Element hierarchy');tree.append(figmaIcon('tree'));
     list.className='element-tree';list.id='element-hierarchy';list.setAttribute('role','group');list.setAttribute('aria-label','Element hierarchy');tree.setAttribute('aria-controls',list.id);
-    const tag=document.createElement('code');tag.className='dom-tag';tag.textContent=`<${element.tag}>`;
-    const identity=document.createElement('div');identity.className='identity-label';identity.append(label,tag);
+    const identity=document.createElement('div');identity.className='identity-label';identity.append(label);
     const owner=activeFrameId;
     function fillTree() {
       for(const entry of element.tree) {
@@ -739,7 +737,7 @@
       if(treeOpen && !list.children.length)fillTree();scheduleTableLayout();
     }
 tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
-    row.append(identity,tree);selectionHeader.append(row,list);
+    row.append(tree,identity);selectionHeader.append(row,list);
   }
   function render({title, rows = [], allRows = rows, sizes = [], incomplete = false, boxModel = null,element=null,edit=null}) {
     reviewUI?.selected(edit);
@@ -818,7 +816,7 @@ tree.addEventListener('click',()=>{treeOpen=!treeOpen;update();});update();
       if(table.children.length){active.append(table);const box=content.querySelector('.box-model');if(box)box.after(active);else content.prepend(active);}
       if(edit.lost){const notice=document.createElement('p');notice.className='review-status';notice.textContent='A live preview was lost after the page changed. Saved corrections remain in the document.';content.append(notice);}
     }
-    if(element){
+    if(element?.attributes?.length){
       const section=document.createElement('section');section.className='property-section element-attributes';section.setAttribute('aria-label','Element attributes');
       const heading=document.createElement('h3');heading.textContent='Element attributes';section.append(heading);
       const list=document.createElement('dl');list.className='attribute-list';list.setAttribute('role','table');
