@@ -117,11 +117,12 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
   await until(()=>page.eval("document.querySelectorAll('iframe').length===3 && [...document.querySelectorAll('iframe')].every(f=>f.contentWindow)"),'frames loaded');
   await worker.eval(`toggle({id:${tabId}})`);
   await until(()=>page.eval("[...document.fonts].some(font=>font.family.includes('Design Inspect Inter') && font.status==='loaded')"),'Bundled Inter loaded despite page font CSP');
+  assert.equal(await control(a=>a.class==='panel',"const s=getComputedStyle(this);return Math.round(this.getBoundingClientRect().width)===Math.min(parseFloat(s.getPropertyValue('--di-size-panel-min-width')),innerWidth-parseFloat(s.getPropertyValue('--di-size-panel-viewport-clearance')));"),true,'Panel opens at minimum width');
+  assert.equal(await control(a=>a.class==='panel',"const s=getComputedStyle(this),clearance=parseFloat(s.getPropertyValue('--di-size-panel-viewport-clearance')),minimum=parseFloat(s.getPropertyValue('--di-size-panel-min-height'));return Math.abs(this.getBoundingClientRect().height-Math.min(innerHeight-clearance,Math.max(minimum,innerHeight*.3)))<1;"),true,'Panel opens at 30 percent viewport height within size limits');
   assert.equal(await control(a=>a.class==='panel','return getComputedStyle(this).fontSize'),'13px','Default panel font size');
   assert.equal(await control(a=>a.class==='panel','return getComputedStyle(this).lineHeight'),'15.6px','120 percent line height');
   assert.equal(await control(a=>a.class==='panel',"return getComputedStyle(this).fontFamily.includes('Design Inspect Inter')"),true);
   assert.equal(await control(a=>a.class==='panel',"return [...this.querySelectorAll('*')].every(node=>parseFloat(getComputedStyle(node).fontSize)>=11)"),true,'No content below 11px');
-  assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),await control(a=>a.class==='panel',"return parseFloat(getComputedStyle(this).getPropertyValue('--di-size-panel-width'))"),'Configured initial panel width');
   if(process.env.NOTES_TEST) {
     const review=()=>worker.eval(`reviewStore.run(${tabId},'get')`);
     const copyText=async()=>{const result=await worker.eval(`chrome.scripting.executeScript({target:{tabId:${tabId}},func:()=>globalThis.__notesCopied})`);return result[0].result;};
@@ -784,7 +785,7 @@ const clickInside = ctx => page.eval("document.querySelector('#inside').click()"
   await page.call('Input.dispatchMouseEvent',{type:'mousePressed',x:resizeBefore.left,y:resizeBefore.top+60,button:'left',clickCount:1});
   await page.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:resizeBefore.left-40,y:resizeBefore.top+60,button:'left',buttons:1});
   await page.call('Input.dispatchMouseEvent',{type:'mouseReleased',x:resizeBefore.left-40,y:resizeBefore.top+60,button:'left',clickCount:1});
-  assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),await control(a=>a.class==='panel',"return parseFloat(getComputedStyle(this).getPropertyValue('--di-size-panel-width'))+40"),'Horizontal resize handle expands panel');
+  assert.equal(await control(a=>a.class==='panel','return Math.round(this.getBoundingClientRect().width)'),await control(a=>a.class==='panel',"return parseFloat(getComputedStyle(this).getPropertyValue('--di-size-panel-min-width'))+40"),'Horizontal resize handle expands panel');
   const heightBefore=await control(a=>a.class==='panel','return this.getBoundingClientRect().height');
   await control(a=>a['data-edge']==='bottom',"this.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}))");
   assert.equal(await control(a=>a.class==='panel','return this.getBoundingClientRect().height'),heightBefore-16,'Bottom handle reduces height with keyboard');
